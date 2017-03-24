@@ -128,11 +128,14 @@ if __name__ == "__main__":
         for w in worker_dict.values():
             w.validate()
 
-        sys.exit()
+        # Now go through each transaction and get pre-reqs
+        for t in trans_list:
+            t.return_pre_reqs()
 
+        print("Max sequence is: {}".format(Transaction._max_seq))
 
-        for row in trans_list:
-            # If no position, find it
-            if row[2] == "":
-                print("No position")
-
+        with open("./output.csv", "w") as f:
+            for t in trans_list:
+                if t.valid:
+                    f.write(t.output() + "\n")
+            

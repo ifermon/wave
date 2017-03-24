@@ -28,11 +28,14 @@ from staffing_model import Staffing_Models
 
 
 class Position(object):
+    # Set this to true if you want it to log tranactions 
+    _log_trans = False
 
     def __init__(self, pos_id, staffing=Staffing_Models.POSITION_MGMT):
         self._pos_id = pos_id
         self._staffing = staffing
         self._tlist = []
+        self._invalid_list = []
         self._sorted = False
         return
 
@@ -41,18 +44,31 @@ class Position(object):
         self._sorted = False
         return
 
+    def get_transactions(self):
+        return self._tlist
+
+    def remove_transaction(self, trans):
+        if trans in self._tlist:
+            self._tlist.remove(trans)
+            self._invalid_list.append(trans)
+        return
+
     @property
     def staffing_model(self):
         return self._staffing
     @property
     def pos_id(self):
-        return self._pos
+        return self._pos_id
 
     def __repr__(self):
         if self._staffing == Staffing_Models.POSITION_MGMT:
             tstr = "\n\t".join([ str(t) for t in self._tlist ])
         else:
             tstr = "Job Management Org, not listing transactions"
-        ret_str = "Pos id: [{}] Staffing: [{}]\nTransactions:\n\t[{}]".format(
-                self._pos_id, self._staffing, tstr)
+
+        if Position._log_trans == True:
+            ret_str = ("""Pos id: [{}] Staffing: [{}]\nTransactions:"""
+                    """\n\t[{}]""").format(self._pos_id, self._staffing, tstr)
+        else:
+            ret_str = "Pos id: [{}] Staffing: [{}]\n"
         return ret_str
