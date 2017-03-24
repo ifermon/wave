@@ -36,25 +36,43 @@ class Transaction(object):
         self._to_position = None
         self._worker = None
         self._from_position = None
+        self._valid = True
         if ttype == HIRE:
             self._from_position = PRE_HIRE
         if ttype == TERM:
             self._to_position = TERMED_EMP
         return
 
-    def build_pre-req_list(self):
-        pass
+    def build_pre_req_list(self):
+        return
+
+    def invalidate(self):
+        """ This transaction somehow is not valid """
+        self._valid = False
+        return
+
+    @property
+    def valid(self):
+        return self._valid
 
     @property
     def from_position(self):
         return self._from_position
+    @from_position.setter
+    def from_position(self, position):
+        if self._from_position != None:
+            print("Trying to set from_position when it already exists")
+            print("Trying to set it to: {}".format(position))
+            print("Current value: {}".format(self._from_position))
+            print(self)
+            raise Exception
+        self._from_position = position
     @property
     def to_position(self):
         return self._to_position
     @to_position.setter
     def to_position(self, pos):
-        if self._to_position != None:
-            self._to_position = pos
+        self._to_position = pos
         return
     @property
     def position_id(self):
@@ -106,7 +124,7 @@ class Transaction(object):
     def header():
         return "Date, Employee ID, Position, Transaction Type, Worker Wave, Position Wave, Original line number"
 
-    def __str__(self):
-        return "{},{},{},{},{},{},{}".format(
-                self.date, self._emp, self._position, self._ttype,
-                self._worker_wave, self._position_wave, self._lineno)
+    def __repr__(self):
+        return "{},{},{},{},{} {}".format(
+                self.date, self._emp_id, self._position_id, self._ttype,
+                self._lineno, self._valid)

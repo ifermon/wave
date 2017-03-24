@@ -29,8 +29,8 @@ from staffing_model import Staffing_Models
 
 class Position(object):
 
-    def __init__(self, pos, staffing=Staffing_Models.POSITION_MGMT):
-        self._pos = pos
+    def __init__(self, pos_id, staffing=Staffing_Models.POSITION_MGMT):
+        self._pos_id = pos_id
         self._staffing = staffing
         self._tlist = []
         self._sorted = False
@@ -45,5 +45,14 @@ class Position(object):
     def staffing_model(self):
         return self._staffing
     @property
-    def pos(self):
+    def pos_id(self):
         return self._pos
+
+    def __repr__(self):
+        if self._staffing == Staffing_Models.POSITION_MGMT:
+            tstr = "\n\t".join([ str(t) for t in self._tlist ])
+        else:
+            tstr = "Job Management Org, not listing transactions"
+        ret_str = "Pos id: [{}] Staffing: [{}]\nTransactions:\n\t[{}]".format(
+                self._pos_id, self._staffing, tstr)
+        return ret_str
