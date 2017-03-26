@@ -10,7 +10,7 @@
         LOA Return
         Terminate
 
-    It is assumed that all transactions MUST occurr between an 
+    It is assumed that all transactions MUST occur between an
     Hire and Termination event for any given employee
 
     If position id does not exist the program will look up the last 
@@ -28,7 +28,7 @@ from staffing_model import Staffing_Models
 
 
 class Position(object):
-    # Set this to true if you want it to log tranactions 
+    # Set this to true if you want it to log transactions
     _log_trans = False
 
     def __init__(self, pos_id, staffing=Staffing_Models.POSITION_MGMT):
@@ -45,6 +45,10 @@ class Position(object):
         return
 
     def get_transactions(self):
+        """ Returns list of transactions, always sorted """
+        if not self._sorted:
+            self._tlist.sort()
+            self._sorted = True
         return self._tlist
 
     def remove_transaction(self, trans):
@@ -66,9 +70,9 @@ class Position(object):
         else:
             tstr = "Job Management Org, not listing transactions"
 
-        if Position._log_trans == True:
-            ret_str = ("""Pos id: [{}] Staffing: [{}]\nTransactions:"""
-                    """\n\t[{}]""").format(self._pos_id, self._staffing, tstr)
+        if Position._log_trans:
+            ret_str = ("Pos id: [{}] Staffing: [{}]\nTransactions:"
+                    "\n\t[{}]").format(self._pos_id, self._staffing, tstr)
         else:
-            ret_str = "Pos id: [{}] Staffing: [{}]\n"
+            ret_str = "Pos id: [{}] Staffing: [{}]\n".format(self._pos_id, self._staffing)
         return ret_str

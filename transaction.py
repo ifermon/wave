@@ -10,7 +10,7 @@
         LOA Return
         Terminate
 
-    It is assumed that all transactions MUST occurr between an 
+    It is assumed that all transactions MUST occur between an
     Hire and Termination event for any given employee
 
     If position id does not exist the program will look up the last 
@@ -25,12 +25,22 @@
 """
 from __init__ import *
 
-log_emp_ids= ["19292"]
+log_emp_ids = ["xx27059"]
 
 class Transaction(object):
 
-    # Class variable containing the maximum sequence value
     _max_seq = 0
+    _max_seq_t = None
+    # Class method to track the longest sequence
+    @classmethod
+    def max_seq(cls, seq, t):
+        if seq > Transaction._max_seq:
+            Transaction._max_seq = seq
+            Transaction._max_seq_t = t
+        elif seq == Transaction._max_seq and Transaction._max_seq_t < t:
+            Transaction._max_seq_t = t
+        return
+
 
     def __init__(self, date, ttype, emp, position, lineno):
         self._date = date
@@ -79,6 +89,9 @@ class Transaction(object):
             And then for worker
         """
         if not self._pre_reqs_calcd:
+            # If my to_position is JOB_MGMT then we don't
+            # have any dependencies on transactions from
+            # position being a dependency
             if self._to_position.staffing_model != JOB_MGMT:
                 for t in self._to_position.get_transactions():
                     if t < self:
@@ -86,15 +99,15 @@ class Transaction(object):
             for t in self._worker.get_transactions():
                 if t < self:
                     self._pre_reqs += t.return_pre_reqs() + [t,]
-                if self._emp_id in log_emp_ids:
-                    print("In pre-reqs")
-                    print(self)
-                    print(str("\n".join([str(t) for t in self._pre_reqs])))
-                self._pre_reqs = Transaction._uniquify(self._pre_reqs)
-                if len(self._pre_reqs) > 0: # Sorting empty list returns None
-                    self._pre_reqs.sort()
-                self._calc_seq()
-                self._pre_reqs_calcd = True
+                else:
+                    # Worker transactions are guaranteed to be sorted
+                    # So once a transaction is > t, all will be
+                    break
+            self._pre_reqs = Transaction._uniquify(self._pre_reqs)
+            if len(self._pre_reqs) > 0: # Sorting empty list returns None
+                self._pre_reqs.sort()
+            self._calc_seq()
+            self._pre_reqs_calcd = True
         ret_list = self._pre_reqs
         return ret_list
 
@@ -105,20 +118,27 @@ class Transaction(object):
         """
         seq = 0
         last_type = None
-        for t in self._pre_reqs: # list sorted by date/type
-            if t.emp_id in log_emp_ids:
-                print(t)
+        last_t = None
+        for t in self._pre_reqs + [self]: # list sorted by date/type
             # It's fine to have 2 in a row or more of change job, org ass or loa
-            if not (last_type in [CHANGE_JOB, ORG_ASSN, LOA_START, LOA_STOP] and
-                    last_type == t.ttype):
+            # Break out logic for each type to be clear
+            if t.ttype == CHANGE_JOB and last_type != CHANGE_JOB:
                 seq += 1
+            elif t.ttype == ORG_ASSN and last_type != ORG_ASSN:
+                seq += 1
+            elif t.ttype in [LOA_START, LOA_STOP] and last_type not in [LOA_START, LOA_STOP]:
+                seq += 1
+            elif t.ttype in [HIRE, TERM]:
+                if t.ttype != last_type or last_t.emp_id == t.emp_id:
+                    seq += 1
             t.assign_seq(seq)
+            last_type = t.ttype
+            last_t = t
 
     def assign_seq(self, i):
         if self._seq < i:
             self._seq = i
-            if Transaction._max_seq < i:
-                Transaction._max_seq = i
+            Transaction.max_seq(i, self)
         return
 
     def invalidate(self):
@@ -127,11 +147,11 @@ class Transaction(object):
             Tell the worker and positions to remove it
         """
         self._valid = False
-        if self._to_position != None:
+        if self._to_position is not None:
             self._to_position.remove_transaction(self)
-        if self._from_position != None:
+        if self._from_position is not None:
             self._from_position.remove_transaction(self)
-        if self._worker != None:
+        if self._worker is not None:
             self._worker.remove_transaction(self)
         return
 
@@ -144,7 +164,7 @@ class Transaction(object):
         return self._from_position
     @from_position.setter
     def from_position(self, position):
-        if self._from_position != None:
+        if self._from_position is not None:
             print("Trying to set from_position when it already exists")
             print("Trying to set it to: {}".format(position))
             print("Current value: {}".format(self._from_position))
@@ -204,17 +224,11 @@ class Transaction(object):
         else: ret =  self.date >= other.date
         return ret
 
-    @classmethod
-    def max_seq(cls, seq):
-        if cls._max_seq < seq:
-            cls._max_seq = seq
-        return
-
     @staticmethod
     def header():
         return "Date, Employee ID, Position, Transaction Type, Worker Wave, Position Wave, Original line number"
 
     def __repr__(self):
-        return "{},{},{},{},{} {}".format(
+        return "{},{},{},{},{} {} {}".format(
                 self.date, self._emp_id, self._position_id, self._ttype,
-                self._lineno, self._valid)
+                self._lineno, self._valid, self._seq)

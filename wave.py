@@ -10,7 +10,7 @@
         LOA Return
         Terminate
 
-    It is assumed that all transactions MUST occurr between an 
+    It is assumed that all transactions MUST occur between an
     Hire and Termination event for any given employee
 
     If position id does not exist the program will look up the last 
@@ -75,8 +75,8 @@ if __name__ == "__main__":
         termination_waves = []
         loa_waves = []
 
-        print
-        print Transaction.header()
+        print()
+        print(Transaction.header())
         """
             Now that we have a list of transactions sorted by date / type
             we can go out and build out the extra data needed including:
@@ -129,10 +129,19 @@ if __name__ == "__main__":
             w.validate()
 
         # Now go through each transaction and get pre-reqs
+        last_t = None
         for t in trans_list:
+            last_t = t
+            #print("Starting to process {}".format(t))
+            #print("Transactions to_position is\n{}".format(t.to_position))
             t.return_pre_reqs()
+            #print("Finished processing {}\n".format(t))
 
         print("Max sequence is: {}".format(Transaction._max_seq))
+        print("Last in sequence:\n{}".format(Transaction._max_seq_t))
+        print("Pre-requisites:\n")
+        for t in Transaction._max_seq_t.return_pre_reqs():
+            print("\t{}".format(t))
 
         with open("./output.csv", "w") as f:
             for t in trans_list:

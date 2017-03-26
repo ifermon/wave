@@ -10,7 +10,7 @@
         LOA Return
         Terminate
 
-    It is assumed that all transactions MUST occurr between an 
+    It is assumed that all transactions MUST occur between an
     Hire and Termination event for any given employee
 
     If position id does not exist the program will look up the last 

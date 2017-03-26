@@ -5,7 +5,7 @@
 
 class Trans_Type(object):
     def __init__(self, trans_type, seq):
-        self.ttype = trans_type
+        self._ttype = trans_type
         self._seq = seq
         return
     def __lt__(self, other):
@@ -13,7 +13,9 @@ class Trans_Type(object):
     def __gt__(self, other):
         return self.seq > other.seq
     def __ne__(self, other):
-        return self.seq != other.seq
+        if other is None: ret = True
+        else: ret = self.seq != other.seq
+        return ret
     def __eq__(self, other):
         if other is None: ret = False
         else: ret = self.seq == other.seq

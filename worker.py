@@ -10,7 +10,7 @@
         LOA Return
         Terminate
 
-    It is assumed that all transactions MUST occurr between an 
+    It is assumed that all transactions MUST occur between an
     Hire and Termination event for any given employee
 
     If position id does not exist the program will look up the last 
@@ -27,7 +27,7 @@ from __init__ import *
 from enum import Enum
 
 # Log employees allows you to log information about a list of emp ids for debugging
-log_employees = []
+log_employees = ["xx27059"]
 
 class Status(Enum):
     ON_LEAVE = 1
@@ -73,10 +73,10 @@ class Worker(object):
     def _validate(self):
         """
             Given a transaction, get the "from" position for that transaction
-            and validate that we're not missing tranactions as best we can
+            and validate that we're not missing transactions as best we can
         """
         # Sort my transaction list
-        if self._sorted == False:
+        if not self._sorted:
             self._tlist.sort()
             self._sorted = True
 
@@ -100,7 +100,7 @@ class Worker(object):
 
             if t.ttype == HIRE:
                 # Check to see if HIRE is valid sequentially
-                if last_type != TERM and last_to_position == None:
+                if last_type != TERM and last_to_position is None:
                     print("For emp {}, HIRE trx out of order".format(
                             self._emp_id))
                     print("Last type = {} last to position = {}".format(
@@ -110,9 +110,9 @@ class Worker(object):
                     raise Exception
                 # This should have a to, and from is PRE_HIRE
                 worker_status = ACTIVE
-                if t.to_position == None: # Only happens w/ job mgmt orgs
+                if t.to_position is None: # Only happens w/ job mgmt orgs
                     t.to_position = JOB_MGMT_POS
-                if t.from_position == None:
+                if t.from_position is None:
                     t.from_position = PRE_HIRE
                 last_to_position = t.to_position
                 last_type = t.ttype
@@ -126,9 +126,9 @@ class Worker(object):
 
             elif t.ttype in [ORG_ASSN, CHANGE_JOB]:
                 # Should have a to position unless job mgmt
-                if t.to_position == None: # Assume job mgmt
+                if t.to_position is None: # Assume job mgmt
                     t.to_position = JOB_MGMT_POS
-                if t.from_position == None:
+                if t.from_position is None:
                     t.from_position = last_to_position
                 last_to_position = t.to_position
                 last_type = t.ttype
@@ -137,9 +137,9 @@ class Worker(object):
                 # should have position unless job mgmt
                 if worker_status == INACTIVE:
                     t.invalidate()
-                if t.to_position == None:
+                if t.to_position is None:
                     t.to_position = JOB_MGMT_POS
-                if t.from_position == None:
+                if t.from_position is None:
                     t.from_position = last_to_position
                 last_to_position = t.to_position
                 last_type = t.ttype
@@ -150,9 +150,9 @@ class Worker(object):
                     t.invalidate()
                 worker_status = ACTIVE
                 # should have position unless job mgmt
-                if t.to_position == None:
+                if t.to_position is None:
                     t.to_position = JOB_MGMT_POS
-                if t.from_position == None:
+                if t.from_position is None:
                     t.from_position = last_to_position
                 last_to_position = t.to_position
                 last_type = t.ttype
@@ -162,7 +162,7 @@ class Worker(object):
                 #print("""\tExiting with last to: [{}] last type:"""
                 #        """[{}] worker status {}""".format(
                 #        last_to_position, last_type, worker_status))
-                print("Exit : {}\n".format(t))
+                print("Exit : {} {}\n".format(t, worker_status))
         return # END _validate
 
     def remove_transaction(self, trans):
@@ -174,6 +174,9 @@ class Worker(object):
         return
 
     def get_transactions(self):
+        if not self._sorted:
+            self._tlist.sort()
+            self._sorted = True
         return self._tlist
 
     @property
@@ -181,7 +184,7 @@ class Worker(object):
         return self._emp_id
 
     def __repr__(self):
-        if Worker._log_trans == True:
+        if Worker._log_trans:
             tstr = "\n\t".join([ str(t) for t in self._tlist ])
             ret_str = "Emp id {}\nTransactions:\n\t{}".format(
                 self._emp_id, tstr)
