@@ -126,22 +126,27 @@ if __name__ == "__main__":
                 to_position/from for LOA and TERM transactions
         """
         for w in worker_dict.values():
-            w.validate()
+            w.top_of_stack().validate()
 
         # Now go through each transaction and get pre-reqs
         last_t = None
-        for t in trans_list:
+        for w in worker_dict.values():
+            t = w.top_of_stack()
+            if t is None:
+                continue
             last_t = t
-            #print("Starting to process {}".format(t))
-            #print("Transactions to_position is\n{}".format(t.to_position))
             t.return_pre_reqs()
-            #print("Finished processing {}\n".format(t))
 
-        print("Max sequence is: {}".format(Transaction._max_seq))
-        print("Last in sequence:\n{}".format(Transaction._max_seq_t))
-        print("Pre-requisites:\n")
-        for t in Transaction._max_seq_t.return_pre_reqs():
-            print("\t{}".format(t))
+        # Let's find some complicated worker transactions
+        for w in worker_dict.values():
+            if len(w.get_transactions()) == 0:
+                continue
+            t = w.get_transactions()[-1]
+            if t.seq > 15:
+                print("Found top-level worker transaction w seq > 15")
+                print(t)
+                for ts in t.return_pre_reqs():
+                    print("\t{}".format(ts))
 
         with open("./output.csv", "w") as f:
             for t in trans_list:

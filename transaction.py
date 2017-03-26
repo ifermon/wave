@@ -34,12 +34,22 @@ class Transaction(object):
     # Class method to track the longest sequence
     @classmethod
     def max_seq(cls, seq, t):
-        if seq > Transaction._max_seq:
-            Transaction._max_seq = seq
-            Transaction._max_seq_t = t
-        elif seq == Transaction._max_seq and Transaction._max_seq_t < t:
-            Transaction._max_seq_t = t
+        if seq > cls._max_seq:
+            cls._max_seq = seq
+            cls._max_seq_t = t
+        elif seq == cls._max_seq and cls._max_seq_t < t:
+            cls._max_seq_t = t
         return
+
+    _invalid_list = {}
+    @classmethod
+    def add_to_invalid_list(cls, t, msg):
+        cls._invalid_list[t] = msg
+        return
+
+    @classmethod
+    def get_invalid_transactions(cls,t):
+        return cls._invalid_list
 
 
     def __init__(self, date, ttype, emp, position, lineno):
@@ -88,6 +98,8 @@ class Transaction(object):
             Go through each transaction for to_position
             And then for worker
         """
+        if not self._valid:
+            return []
         if not self._pre_reqs_calcd:
             # If my to_position is JOB_MGMT then we don't
             # have any dependencies on transactions from
@@ -132,6 +144,9 @@ class Transaction(object):
                 if t.ttype != last_type or last_t.emp_id == t.emp_id:
                     seq += 1
             t.assign_seq(seq)
+            if seq < t.seq:
+                print("Found a jump in seq for {}".format(t))
+                seq = t.seq 
             last_type = t.ttype
             last_t = t
 
@@ -141,7 +156,7 @@ class Transaction(object):
             Transaction.max_seq(i, self)
         return
 
-    def invalidate(self):
+    def invalidate(self, msg):
         """ 
             This transaction somehow is not valid 
             Tell the worker and positions to remove it
@@ -153,6 +168,7 @@ class Transaction(object):
             self._from_position.remove_transaction(self)
         if self._worker is not None:
             self._worker.remove_transaction(self)
+        Transaction.add_to_invalid_list(self, msg)
         return
 
     @property
@@ -197,6 +213,9 @@ class Transaction(object):
     @property
     def date(self):
         return self._date
+    @property
+    def seq(self):
+        return self._seq
 
     """ Allows us to compare transactions for > < """
     def __lt__(self, other):

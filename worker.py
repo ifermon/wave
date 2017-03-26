@@ -50,6 +50,18 @@ class Worker(object):
         self._validated = False
         return
 
+    def top_of_stack(self):
+        """ 
+            If the is a transaction list, return the last (greatest date
+            / transaction type 
+        """
+        if len(self._tlist) == 0: ret = None
+        else: 
+            if not self._sorted:
+                self._tlist.sort()
+            ret = self._tlist[-1]
+        return ret
+
     def ret_pre_reqs(self, trans):
         ret_list = []
         for t in self._tlist:
@@ -136,26 +148,28 @@ class Worker(object):
             elif t.ttype == LOA_START:
                 # should have position unless job mgmt
                 if worker_status == INACTIVE:
-                    t.invalidate()
-                if t.to_position is None:
-                    t.to_position = JOB_MGMT_POS
-                if t.from_position is None:
-                    t.from_position = last_to_position
-                last_to_position = t.to_position
-                last_type = t.ttype
-                worker_status = ON_LEAVE
+                    t.invalidate("Start of LOA but worker is not active")
+                else:
+                    if t.to_position is None:
+                        t.to_position = JOB_MGMT_POS
+                    if t.from_position is None:
+                        t.from_position = last_to_position
+                    last_to_position = t.to_position
+                    last_type = t.ttype
+                    worker_status = ON_LEAVE
 
             elif t.ttype == LOA_STOP:
                 if worker_status != ON_LEAVE:
-                    t.invalidate()
-                worker_status = ACTIVE
-                # should have position unless job mgmt
-                if t.to_position is None:
-                    t.to_position = JOB_MGMT_POS
-                if t.from_position is None:
-                    t.from_position = last_to_position
-                last_to_position = t.to_position
-                last_type = t.ttype
+                    t.invalidate("End of LOA but worker was not on LOA")
+                else:
+                    worker_status = ACTIVE
+                    # should have position unless job mgmt
+                    if t.to_position is None:
+                        t.to_position = JOB_MGMT_POS
+                    if t.from_position is None:
+                        t.from_position = last_to_position
+                    last_to_position = t.to_position
+                    last_type = t.ttype
 
             if t.emp_id in log_employees:
                 #print("\tt.to_position: {}".format(t.to_position))
