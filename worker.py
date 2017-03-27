@@ -57,8 +57,7 @@ class Worker(object):
         """
         if len(self._tlist) == 0: ret = None
         else: 
-            if not self._sorted:
-                self._tlist.sort()
+            self._sort()
             ret = self._tlist[-1]
         return ret
 
@@ -88,9 +87,7 @@ class Worker(object):
             and validate that we're not missing transactions as best we can
         """
         # Sort my transaction list
-        if not self._sorted:
-            self._tlist.sort()
-            self._sorted = True
+        self._sort()
 
         last_to_position = None
         last_type = TERM
@@ -187,15 +184,28 @@ class Worker(object):
             self._invalid_list.append(trans)
         return
 
+    def _sort(self):
+        if not self._sorted and len(self._tlist) != 0:
+                self._tlist.sort()
+        self._sorted = True
+        return
+
     def get_transactions(self):
-        if not self._sorted:
-            self._tlist.sort()
-            self._sorted = True
+        self._sort()
         return self._tlist
 
     @property
     def emp_id(self):
         return self._emp_id
+
+    @property
+    def max_seq(self):
+        self._sort()
+        if len(self._tlist) == 0:
+            ret = 0
+        else:
+            ret = self._tlist[-1].seq
+        return ret
 
     def __repr__(self):
         if Worker._log_trans:

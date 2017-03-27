@@ -1,26 +1,11 @@
 """
-    This program reads a simple csv files containing the following fields:
-        date, employee id, type, position id
-
-    Types are the following:
-        Job Change
-        Org Assignment
-        Hire
-        LOA Start
-        LOA Return
-        Terminate
-
-    It is assumed that all transactions MUST occur between an
-    Hire and Termination event for any given employee
-
-    If position id does not exist the program will look up the last 
-    position for that employee and raise an exception if no position is found
-
-    Go through file
-    sort by date
-    for each record
-    if employee doesn't exist, create it
-    if position doesn't exist, create it
+    The foundational class for this module. Transaction represents
+    a transactoin and must have the basic elements
+    of:
+        employee id
+        event date
+        event type (TERM, HIRE, etc)
+        position (if applicable)
 
 """
 from __init__ import *
@@ -86,7 +71,10 @@ class Transaction(object):
 
     @staticmethod
     def _uniquify(l):
-        """ Given a list, return a copy that has only unique values """
+        """ 
+            Given a list, return a copy that has only unique values 
+            Keep order intact
+        """
         keys = {}
         for i in l:
             keys[i] = 1
@@ -126,7 +114,6 @@ class Transaction(object):
     def _calc_seq(self):
         """
             For each transaction in _pre_reqs list, assign a sequence
-        :return:
         """
         seq = 0
         last_type = None
@@ -145,7 +132,6 @@ class Transaction(object):
                     seq += 1
             t.assign_seq(seq)
             if seq < t.seq:
-                print("Found a jump in seq for {}".format(t))
                 seq = t.seq 
             last_type = t.ttype
             last_t = t

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
     This program reads a simple csv files containing the following fields:
         date, employee id, type, position id
@@ -26,6 +27,7 @@
 import csv
 import sys
 import datetime as dt
+import argparse
 from transaction_type import Trans_Type
 from worker import Worker
 from transaction import Transaction
@@ -52,9 +54,23 @@ def get_type(type_str):
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--header", action="store_true", help="Print out header column names", required=False)
+    parser.add_argument("-o", "--output_file", default="./output.csv")
+    parser.add_argument("-i", "--input_file", default="./combined.csv")
+    mgroup = parser.add_mutually_exclusive_group()
+    mgroup.add_argument("-w", "--worker", help="Output only transactions required for specified worker (employee id)",
+            action="append", required=False)
+    mgroup.add_argument("-s", "--sequence", help="Output only workers w max sequence > value", type=int)
+    args = parser.parse_args()
+
+    if args.header:
+        print(Transaction.header())
+        sys.exit(0)
+
     trans_list = []
 
-    with open("./combined.csv","rU") as csvfile:
+    with open(args.input_file,"rU") as csvfile:
         ctr = 0
         reader = csv.reader(csvfile)
         for row in reader:
@@ -69,14 +85,7 @@ if __name__ == "__main__":
         # Create my various lists / dicts
         worker_dict = {}
         position_dict = {}
-        change_job_waves = []
-        org_assignment_waves = []
-        hire_waves = []
-        termination_waves = []
-        loa_waves = []
 
-        print()
-        print(Transaction.header())
         """
             Now that we have a list of transactions sorted by date / type
             we can go out and build out the extra data needed including:
@@ -126,29 +135,41 @@ if __name__ == "__main__":
                 to_position/from for LOA and TERM transactions
         """
         for w in worker_dict.values():
-            w.top_of_stack().validate()
+            w.validate()
 
         # Now go through each transaction and get pre-reqs
-        last_t = None
-        for w in worker_dict.values():
-            t = w.top_of_stack()
-            if t is None:
-                continue
-            last_t = t
-            t.return_pre_reqs()
+        if args.worker is None:
+            for w in worker_dict.values():
+                t = w.top_of_stack()
+                if t is None:
+                    continue
+                t.return_pre_reqs()
+        else: # Only calc for worker(s) (and related workers as needed) 
+            for emp_id in args.worker:
+                if emp_id not in worker_dict:
+                    print("Worker with employee id = {} does not exist.".format(args.worker))
+                    sys.exit(1)
+                t = worker_dict[emp_id].top_of_stack()
+                sub_list = t.return_pre_reqs()
+                # Now we get all the workers in the list and print out all their transactions
+                worker_set = set()
+                for t in sub_list:
+                    worker_set.add(t.worker)
+                trans_list = []
+                for w in worker_set:
+                    trans_list += w.get_transactions()
 
         # Let's find some complicated worker transactions
-        for w in worker_dict.values():
-            if len(w.get_transactions()) == 0:
-                continue
-            t = w.get_transactions()[-1]
-            if t.seq > 15:
-                print("Found top-level worker transaction w seq > 15")
-                print(t)
-                for ts in t.return_pre_reqs():
-                    print("\t{}".format(ts))
+        if args.sequence is not None:
+            for w in worker_dict.values():
+                if w.max_seq >= args.sequence:
+                    t = w.top_of_stack()
+                    print("Found top-level worker transaction w seq > {}".format(args.sequence))
+                    print("Pre-reqs for {}".format(t))
+                    for ts in t.return_pre_reqs():
+                        print("\t{}".format(ts))
 
-        with open("./output.csv", "w") as f:
+        with open(args.output_file, "w") as f:
             for t in trans_list:
                 if t.valid:
                     f.write(t.output() + "\n")
