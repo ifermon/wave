@@ -1,18 +1,18 @@
-"""
-    The foundational class for this module. Transaction represents
-    a transactoin and must have the basic elements
-    of:
-        employee id
-        event date
-        event type (TERM, HIRE, etc)
-        position (if applicable)
-
-"""
 from __init__ import *
 
 log_emp_ids = ["xx27059"]
 
 class Transaction(object):
+    """
+        The foundational class for this module. Transaction represents
+        a transactoin and must have the basic elements
+        of:
+            employee id
+            event date
+            event type (TERM, HIRE, etc)
+            position (if applicable)
+
+    """
 
     _max_seq = 0
     _max_seq_t = None

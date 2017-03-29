@@ -1,9 +1,9 @@
-"""
-    This class is meant to represent iloads types, specifically it's used
-    to allow for relative sequencing of different iloads based on load order
-"""
 
 class Trans_Type(object):
+    """
+        This class is meant to represent iloads types, specifically it's used
+        to allow for relative sequencing of different iloads based on load order
+    """
     def __init__(self, trans_type, seq):
         self._ttype = trans_type
         self._seq = seq
