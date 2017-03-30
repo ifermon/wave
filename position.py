@@ -1,4 +1,3 @@
-from __init__ import *
 from staffing_model import Staffing_Models
 
 class Position(object):
@@ -19,6 +18,7 @@ class Position(object):
         return
 
     def add_transaction(self, trans):
+        """ Add a transaction to the list of transactions that involve this position """
         self._tlist.append(trans)
         self._sorted = False
         return
@@ -31,6 +31,7 @@ class Position(object):
         return self._tlist
 
     def remove_transaction(self, trans):
+        """ If transaction is in our list, moves it to "invalid" list and out of tlist """
         if trans in self._tlist:
             self._tlist.remove(trans)
             self._invalid_list.append(trans)
@@ -38,9 +39,11 @@ class Position(object):
 
     @property
     def staffing_model(self):
+        """ Returns the staffing model of this position """
         return self._staffing
     @property
     def pos_id(self):
+        """ Returns the ID of this position """
         return self._pos_id
 
     def __repr__(self):
