@@ -233,7 +233,11 @@ class Transaction(object):
     def header():
         return "Date, Employee ID, Position, Transaction Type, Worker Wave, Position Wave, Original line number"
 
+    def test_str(self):
+        return "Employee id: {}\nPosition id: {}\nTransaction Type: {}\nDate: {}\n".format(
+                self._emp_id, self._position_id, self._ttype, self._date)
+
     def __repr__(self):
         return "{},{},{},{},{} {} {}".format(
-                self.date, self._emp_id, self._position_id, self._ttype,
+                self._date, self._emp_id, self._position_id, self._ttype,
                 self._lineno, self._valid, self._seq)
