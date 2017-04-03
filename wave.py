@@ -43,6 +43,7 @@
     TODO: Add ability to include row headers in command line (which position)
     TODO: Fix print headers option
     TODO: Add a verbose option to print out progress
+    TODO: Add ability to take in staffing model (job mgmt)
 """
 import csv
 import sys
@@ -68,26 +69,40 @@ def _get_type(type_str):
         raise Exception
     return ret
 
-if __name__ == "__main__":
-
-    # Process command line arguments
+def parse_command_line():
+    """ Process command line arguments """
     parser = argparse.ArgumentParser(description=("This module takes a list of transactions"
-            " as input files and generates the sequencing for loading those "
-            "transactions into Workday. \n"
-            "Files need to be in the following excel csv format:"
-            "employee id, event date, position id, <unused>, transaction type"))
+                                                  " as input files and generates the sequencing for loading those "
+                                                  "transactions into Workday. \n"
+                                                  "Files need to be in the following excel csv format:"
+                                                  "employee id, event date, position id, <unused>, transaction type"))
     parser.add_argument("--print-header", action="store_true", help="Print out header column names", required=False)
     parser.add_argument("--ignore-rows", help="Ignore first n rows of input file")
     parser.add_argument("--indexes", action="store_true", help="Print out column indexes for csv files")
     parser.add_argument("-o", "--output_file", default="./output.csv")
+    parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("--stats", action="store_true", help="Return statistics about transaction numbers and types")
+    parser.add_argument("-d", "--debug", action="store_true")
     parser.add_argument("-t", "--test", action="store_true", help="Print out first line of file with field mapping")
     parser.add_argument("-i", "--input_file", action="append", default=["./combined.csv",],
-            help="Input file - multiple files may be specified")
+                        help="Input file - multiple files may be specified")
     mgroup = parser.add_mutually_exclusive_group()
     mgroup.add_argument("-w", "--worker", help="Output only transactions required for specified worker (employee id)",
-            action="append", required=False)
+                        action="append", required=False)
     mgroup.add_argument("-s", "--sequence", help="Output only workers w max sequence > value", type=int)
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+
+    args = parse_command_line()
+
+    # Set logging
+    if args.verbose:
+        l.setLevel(logging.INFO)
+    if args.debug:
+        l.setLevel(logging.DEBUG)
+    debug("Starting program.")
 
     # Print out index positions
     if args.indexes:
@@ -122,11 +137,20 @@ if __name__ == "__main__":
 
                 t = Transaction(d, ttype, row[EMP_ID_INDEX], row[POSITION_ID_INDEX], ctr)
                 trans_list.append(t)
+                ttype.add_transaction(t)
 
                 if args.test:
                     print(row)
                     print(t.test_str())
                     sys.exit(0)
+
+    if args.stats:
+        for tt in Trans_Type.all_types():
+            print("Type: {}".format(tt.ttype))
+            print("\tTotal Transaction Count: {}".format(tt.total_count))
+            print("\tGood Transaction Count: {}".format(tt.good_count))
+            print("\tBad Transaction Count: {}".format(tt.bad_count))
+        sys.exit(0)
 
     # Create my various lists / dicts
     worker_dict = {}

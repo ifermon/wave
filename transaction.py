@@ -154,6 +154,7 @@ class Transaction(object):
             self._from_position.remove_transaction(self)
         if self._worker is not None:
             self._worker.remove_transaction(self)
+        self._ttype.add_to_invalid_list(self)
         Transaction.add_to_invalid_list(self, msg)
         return
 

@@ -12,6 +12,11 @@ class Trans_Type(object):
         return
 
     @classmethod
+    def all_types(cls):
+        """ Returns an iterable of all defined types """
+        return list(cls._types_list)
+
+    @classmethod
     def get_type(cls, type_str):
         """ Given a type string, return matching type. Return None if none found """
         ret = None
@@ -31,7 +36,32 @@ class Trans_Type(object):
         self._ttype = trans_type
         self._seq = seq
         Trans_Type._add_type(self)
+        self._transaction_list = []
+        self._invalid_list = []
         return
+
+    def add_to_invalid_list(self, t):
+        """ Add to a list of invalid transactions """
+        self._invalid_list.append(t)
+        return
+
+    def add_transaction(self, t):
+        """ keep a list of all transactions of this type """
+        self._transaction_list.append(t)
+        return
+
+    @property
+    def total_count(self):
+        """ Return the number of transactions of this type """
+        return len(self._transaction_list)
+
+    @property
+    def good_count(self):
+        return len(self._transaction_list) - len(self._invalid_list)
+
+    @property
+    def bad_count(self):
+        return len(self._invalid_list)
 
     def has_key(self, type_str):
         """ Return true if this type has key of type_str """

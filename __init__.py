@@ -6,9 +6,14 @@ from position import Position
 from staffing_model import Staffing_Models
 import logging
 
+# Configure loggging for everyone
+logging.basicConfig()
 l = logging.getLogger()
+l.setLevel(logging.CRITICAL)
 debug = l.debug
 info = l.info
+error = l.error
+
 
 # NOTE: Key to the below is the sequqnce. This should match the
 # relative sequqnce in the implementation suite
