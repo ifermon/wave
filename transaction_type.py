@@ -20,9 +20,9 @@ class Trans_Type(object):
     def get_type(cls, type_str):
         """ Given a type string, return matching type. Return None if none found """
         ret = None
-        for t in cls._types_list:
-            if t.has_key(type_str):
-                ret = t
+        for tt in cls._types_list:
+            if type_str in tt:
+                ret = tt
                 break
         return ret
 
@@ -70,7 +70,7 @@ class Trans_Type(object):
     def bad_count(self):
         return len(self._invalid_list)
 
-    def has_key(self, type_str):
+    def __contains__(self, type_str):
         """ Return true if this type has key of type_str """
         ret = False
         if type_str in self._keywords:
