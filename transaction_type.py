@@ -7,8 +7,8 @@ class Trans_Type(object):
     _types_list = []
 
     @classmethod
-    def _add_type(cls, type):
-        cls._types_list.append(type)
+    def _add_type(cls, ttype):
+        cls._types_list.append(ttype)
         return
 
     @classmethod
@@ -38,7 +38,14 @@ class Trans_Type(object):
         Trans_Type._add_type(self)
         self._transaction_list = []
         self._invalid_list = []
+        self._record_sorted_list = []
         return
+
+    def get_ordered_transactions(self, include_bad=True):
+        """ Return a list of transactions sorted by record number """
+        if len(self._record_sorted_list) == 0:
+            self._record_sorted_list = sorted(self._transaction_list, key= lambda t: t.rec_sort_id)
+        return self._record_sorted_list
 
     def add_to_invalid_list(self, t):
         """ Add to a list of invalid transactions """

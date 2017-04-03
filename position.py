@@ -41,20 +41,22 @@ class Position(object):
     def staffing_model(self):
         """ Returns the staffing model of this position """
         return self._staffing
+
     @property
     def pos_id(self):
         """ Returns the ID of this position """
         return self._pos_id
 
+
     def __repr__(self):
         if self._staffing == Staffing_Models.POSITION_MGMT:
-            tstr = "\n\t".join([ str(t) for t in self._tlist ])
+            tstr = "\n\t".join([str(t) for t in self._tlist])
         else:
             tstr = "Job Management Org, not listing transactions"
 
         if Position._log_trans:
-            ret_str = ("Pos id: [{}] Staffing: [{}]\nTransactions:"
-                    "\n\t[{}]").format(self._pos_id, self._staffing, tstr)
+            ret_str = ("Pos id: [{}] Staffing: [{}]\nTransactions:" 
+                       "\n\t[{}]").format(self._pos_id, self._staffing, tstr)
         else:
             ret_str = "Pos id: [{}] Staffing: [{}]\n".format(self._pos_id, self._staffing)
         return ret_str

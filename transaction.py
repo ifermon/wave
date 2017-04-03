@@ -5,7 +5,7 @@ log_emp_ids = ["xx27059"]
 class Transaction(object):
     """
         The foundational class for this module. Transaction represents
-        a transactoin and must have the basic elements
+        a transaction and must have the basic elements
         of:
             employee id
             event date
@@ -33,16 +33,16 @@ class Transaction(object):
         return
 
     @classmethod
-    def get_invalid_transactions(cls,t):
+    def get_invalid_transactions(cls):
         return cls._invalid_list
 
-
-    def __init__(self, date, ttype, emp, position, lineno):
+    def __init__(self, date, ttype, emp, position_id, lineno, rec_number=None):
         self._date = date
         self._ttype = ttype
         self._emp_id = emp
-        self._position_id = position
+        self._position_id = position_id
         self._lineno = lineno
+        self._rec_number = rec_number
         self._to_position = None
         self._worker = None
         self._from_position = None
@@ -58,7 +58,7 @@ class Transaction(object):
 
     def output(self):
         try:
-            str = "{},{},{},{},{},{},{},{},{}".format(
+            output = "{},{},{},{},{},{},{},{},{}".format(
                     self._emp_id, self._date, self._ttype,
                     self._position_id, self._to_position.pos_id, 
                     self._from_position.pos_id, self._lineno, 
@@ -67,16 +67,16 @@ class Transaction(object):
             print("Error outputting transaction")
             print(self)
             raise e
-        return str
+        return output
 
     @staticmethod
-    def _uniquify(l):
+    def _uniquify(my_list):
         """ 
             Given a list, return a copy that has only unique values 
             Keep order intact
         """
         keys = {}
-        for i in l:
+        for i in my_list:
             keys[i] = 1
         return keys.keys()
 
@@ -95,16 +95,16 @@ class Transaction(object):
             if self._to_position.staffing_model != JOB_MGMT:
                 for t in self._to_position.get_transactions():
                     if t < self:
-                        self._pre_reqs += t.return_pre_reqs() + [t,]
+                        self._pre_reqs += t.return_pre_reqs() + [t, ]
             for t in self._worker.get_transactions():
                 if t < self:
-                    self._pre_reqs += t.return_pre_reqs() + [t,]
+                    self._pre_reqs += t.return_pre_reqs() + [t, ]
                 else:
                     # Worker transactions are guaranteed to be sorted
                     # So once a transaction is > t, all will be
                     break
             self._pre_reqs = Transaction._uniquify(self._pre_reqs)
-            if len(self._pre_reqs) > 0: # Sorting empty list returns None
+            if len(self._pre_reqs) > 0:  # Sorting empty list returns None
                 self._pre_reqs.sort()
             self._calc_seq()
             self._pre_reqs_calcd = True
@@ -118,7 +118,7 @@ class Transaction(object):
         seq = 0
         last_type = None
         last_t = None
-        for t in self._pre_reqs + [self]: # list sorted by date/type
+        for t in self._pre_reqs + [self]:  # list sorted by date/type
             # It's fine to have 2 in a row or more of change job, org ass or loa
             # Break out logic for each type to be clear
             if t.ttype == CHANGE_JOB and last_type != CHANGE_JOB:
@@ -166,14 +166,14 @@ class Transaction(object):
     def from_position(self):
         return self._from_position
     @from_position.setter
-    def from_position(self, position):
+    def from_position(self, position_obj):
         if self._from_position is not None:
             print("Trying to set from_position when it already exists")
             print("Trying to set it to: {}".format(position))
             print("Current value: {}".format(self._from_position))
             print(self)
             raise Exception
-        self._from_position = position
+        self._from_position = position_obj
     @property
     def to_position(self):
         return self._to_position
@@ -203,6 +203,14 @@ class Transaction(object):
     @property
     def seq(self):
         return self._seq
+    @property
+    def rec_sort_id(self):
+        """ Return record # if exists, otherwise lineno"""
+        if self._rec_number is not None:
+            ret = self._rec_number
+        else:
+            ret = self._lineno
+        return ret
 
     """ Allows us to compare transactions for > < """
     def __lt__(self, other):

@@ -47,6 +47,7 @@
 """
 import csv
 import sys
+import time
 import datetime as dt
 import argparse
 from worker import Worker
@@ -64,7 +65,7 @@ TRANS_TYPE_INDEX = 4
 def _get_type(type_str):
     """ Map values in file for transaction type to supported transactions """
     ret = Trans_Type.get_type(type_str)
-    if ret == None:
+    if ret is None:
         print("Error, unknown type {}".format(type_str))
         raise Exception
     return ret
@@ -80,6 +81,12 @@ def parse_command_line():
     parser.add_argument("--ignore-rows", help="Ignore first n rows of input file")
     parser.add_argument("--indexes", action="store_true", help="Print out column indexes for csv files")
     parser.add_argument("-o", "--output_file", default="./output.csv")
+    parser.add_argument("--file-by-type", action="store_true",
+                        help=("Generate output files by transaction type." 
+                              " Designed to be inserted directly into excel " 
+                              "master file. Output is orded by record id if available, " 
+                              "otherwise order by load order. Output files are put in " 
+                              "current directory, and named <type>.<timestamp>.csv."))
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("--stats", action="store_true", help="Return statistics about transaction numbers and types")
     parser.add_argument("-d", "--debug", action="store_true")
@@ -102,7 +109,7 @@ if __name__ == "__main__":
         l.setLevel(logging.INFO)
     if args.debug:
         l.setLevel(logging.DEBUG)
-    debug("Starting program.")
+    info("Starting program.")
 
     # Print out index positions
     if args.indexes:
@@ -121,6 +128,7 @@ if __name__ == "__main__":
     trans_list = []
     ctr = 0
     for fname in args.input_file:
+        info("Opening {}".format(fname))
         with open(fname,"rU") as csvfile:
             reader = csv.reader(csvfile)
 
@@ -143,6 +151,7 @@ if __name__ == "__main__":
                     print(row)
                     print(t.test_str())
                     sys.exit(0)
+        info("Finished reading {}".format(fname))
 
     if args.stats:
         for tt in Trans_Type.all_types():
@@ -163,8 +172,8 @@ if __name__ == "__main__":
             Position objects
             from_position
     """
+    info("Building data structures")
     for row in trans_list:
-
         # Employee should always exist, check
         if row.emp_id == "":
             print("Missing employee id")
@@ -204,10 +213,12 @@ if __name__ == "__main__":
             from_position for transactions
             to_position/from for LOA and TERM transactions
     """
+    info("Validating data")
     for w in worker_dict.values():
         w.validate()
 
     # Now go through each transaction and get pre-reqs
+    info("Calculating dependencies")
     if args.worker is None:
         for w in worker_dict.values():
             t = w.top_of_stack()
@@ -229,7 +240,8 @@ if __name__ == "__main__":
             for w in worker_set:
                 trans_list += w.get_transactions()
 
-    # Let's find some complicated worker transactions
+    info("Generating output")
+    # Let's find some complicated worker transactions if requested
     if args.sequence is not None:
         for w in worker_dict.values():
             if w.max_seq >= args.sequence:
@@ -239,8 +251,18 @@ if __name__ == "__main__":
                 for ts in t.return_pre_reqs():
                     print("\t{}".format(ts))
 
-    with open(args.output_file, "w") as f:
-        for t in trans_list:
-            if t.valid:
-                f.write(t.output() + "\n")
+    # Generate output files
+    if args.file_by_type:
+        timestamp = time.time()
+        for tt in Trans_Type.all_types():
+            fname = "{}.{}.csv".format(tt.ttype, timestamp)
+            with open(fname, "w") as f:
+                for t in tt.get_ordered_transactions():
+                    f.write(t.output() + "\n")
+    else:
+        with open(args.output_file, "w") as f:
+            for t in trans_list:
+                if t.valid:
+                    f.write(t.output() + "\n")
+    info("Done")
 

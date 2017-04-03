@@ -6,7 +6,7 @@ from position import Position
 from staffing_model import Staffing_Models
 import logging
 
-# Configure loggging for everyone
+# Configure logging for everyone
 logging.basicConfig()
 l = logging.getLogger()
 l.setLevel(logging.CRITICAL)
@@ -15,8 +15,8 @@ info = l.info
 error = l.error
 
 
-# NOTE: Key to the below is the sequqnce. This should match the
-# relative sequqnce in the implementation suite
+# NOTE: Key to the below is the sequence. This should match the
+# relative sequence in the implementation suite
 HIRE = Trans_Type("Hire", 1, ["Hire", "a-Hire"])
 CHANGE_JOB = Trans_Type("Job Change", 2, ["Job Change", "d-Job Change", "d-Hjob Change"])
 ORG_ASSN = Trans_Type("Assign Org", 3, ["g-Org Assignment", "Assign Org"])
