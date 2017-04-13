@@ -35,10 +35,10 @@ class Worker(object):
             If the is a transaction list, return the last (greatest date
             / transaction type 
         """
-        if len(self._tlist) == 0: ret = None
-        else: 
+        if self._tlist:
             self._sort()
             ret = self._tlist[-1]
+        else: ret = None
         return ret
 
     def ret_pre_reqs(self, trans):
@@ -49,7 +49,26 @@ class Worker(object):
 
     def add_transaction(self, transaction):
         self._tlist.append(transaction)
+        self._sorted = False
         return
+
+    def pos_as_of(self, as_of_date):
+        """ Return the workers position as of the given date """
+        self._sort()
+        last_t = None
+        ret = None
+        for t in self._tlist:
+            if t.date <= as_of_date:
+                last_t = t
+            else:
+                # We need the position in the last transaction (last_t)
+                if last_t is None:
+                    ret = None
+                else:
+                    ret = last_t.to_position
+                    break
+        return ret
+
 
     def validate(self):
         try:
@@ -193,7 +212,7 @@ class Worker(object):
             ret_str = "Emp id {}\nTransactions:\n\t{}".format(
                 self._emp_id, tstr)
         else:
-            ret_str = "Emp id{}".format(self._emp_id)
+            ret_str = "Emp id {}".format(self._emp_id)
 
         return ret_str
 

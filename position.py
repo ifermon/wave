@@ -1,4 +1,5 @@
 from staffing_model import Staffing_Models
+import __init__
 
 class Position(object):
     """
@@ -17,6 +18,45 @@ class Position(object):
         self._sorted = False
         return
 
+    def _sort(self):
+        if not self._sorted and self._tlist:
+            self._tlist.sort()
+        self._sorted = True
+        return
+
+    def top_of_stack(self):
+        """ Return the top of stack transaction """
+        if self._tlist:
+            self._sort()
+            ret = self._tlist[-1]
+        else: ret = None
+        return ret
+
+    def validate(self):
+        """ Validate that the position is available when someone moves into it """
+        if self._staffing is not Staffing_Models.JOB_MGMT:
+            self._sort()
+            w = None
+            for t in self._tlist:
+                if not w:
+                    w = t.worker
+                if t.worker is not w:
+                    # We have a change in worker, check to see that prior worker moved
+                    p = w.pos_as_of(t.date)
+                    if p is self:
+                        print("Problem Transaction:\n\t{}".format(t))
+                        print("Worker Transactions:")
+                        for wt in w.get_transactions():
+                            print("\t{}".format(wt))
+                        print("Position Transactions:")
+                        for pt in p.get_transactions():
+                            print("\t{}".format(pt))
+                        print("\n\n")
+                    if __init__.stop_on_validation:
+                            raise Exception
+                    w = t.worker
+        return
+
     def add_transaction(self, trans):
         """ Add a transaction to the list of transactions that involve this position """
         self._tlist.append(trans)
@@ -25,9 +65,7 @@ class Position(object):
 
     def get_transactions(self):
         """ Returns list of transactions, always sorted """
-        if not self._sorted:
-            self._tlist.sort()
-            self._sorted = True
+        self._sort()
         return self._tlist
 
     def remove_transaction(self, trans):

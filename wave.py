@@ -18,15 +18,15 @@
         Positions for clarity, accepting the performance hit
         It would be faster to do it all at once
 
-    Now loop through each transaction and create Workers and
+    Next loop through each transaction and create Workers and
     Positions as needed. add the Transaction to the Worker and
     Position objects
 
-    Now that the Transactions, Workers and Postions are all created, go through
+    Once the Transactions, Workers and Postions are all created, go through
     and perform validations (e.g. filling in from_position, or making sure
     that a worker is hired before they have a job change)
 
-    Now that we have all the required data, and we have removed invalid transactions,
+    Once we have all the required data, and we have removed invalid transactions,
     for each worker, start at top of stack transaction for each worker (most recent one)
     and derive the list of pre-requisites. This should get you pre-requisites
     for every valid transaction
@@ -34,21 +34,41 @@
     Finally, generate output as specified in the program invocation
 
     Files need to be in the following excel csv format:
-    employee id, event date, position id, <unused>, transaction type
+    record id, employee id, event date, position id, <unused>, transaction type
+    
+    Valid Transaction Types:
+        Hire
+        Job Change
+        Assign Org
+        LOA Start
+        LOA Stop
+        Term
+        ** Note - we need both loa start and stop at this point
+    
+    --errored-record-file option is used for debugging sequence issues. It takes two arguments,
+    the first is the transaction type (e.g. HIRE, TERM, etc), and the second is a file name
+    containing a list of record ids. These are the same record ids that correspond to the input file 
+    (matches both type and record number). The program then builds an output file containing only 
+    those transactions needed to build out those selected records, it looks up the related 
+     workers and positions and gets all the required transactions based on that data
+     - it should include all dependent records.
 
-    TODO: Add ability to intake a unique id for each line to allow reference
-        between generated files and source data
+    TODO: Add ability to intake an id for each line to allow reference
+        between generated files and source data, id + Type must be unique
     TODO: Add ability to generate files by wave, type, or both
     TODO: Add a nice, indented output for all worker transactions for a given worker
     TODO: Add ability to include row headers in command line (which position)
     TODO: Fix print headers option
     TODO: Add a verbose option to print out progress
     TODO: Add ability to take in staffing model (job mgmt)
+    TODO: Add errored-record-file option
+    TODO: Validate positions are free when worker changes
 """
 import csv
 import sys
 import time
 import datetime as dt
+import os.path
 import argparse
 from worker import Worker
 from transaction import Transaction
@@ -80,6 +100,10 @@ def parse_command_line():
     parser.add_argument("--print-header", action="store_true", help="Print out header column names", required=False)
     parser.add_argument("--ignore-rows", help="Ignore first n rows of input file")
     parser.add_argument("--indexes", action="store_true", help="Print out column indexes for csv files")
+    parser.add_argument("--errored-records-file", nargs=2, help=("Transaction type string and file name. File "
+                                                                 "contains list of errored records. Generates "
+                                                                 "output file containing on transactions related to "
+                                                                 "those records"))
     parser.add_argument("-o", "--output_file", default="./output.csv")
     parser.add_argument("--file-by-type", action="store_true",
                         help=("Generate output files by transaction type." 
@@ -90,11 +114,16 @@ def parse_command_line():
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("--stats", action="store_true", help="Return statistics about transaction numbers and types")
     parser.add_argument("-d", "--debug", action="store_true")
+    parser.add_argument("--dump-worker", action="append", help="Dump transaction list for worker with worker id")
+    parser.add_argument("--dump-position", action="append", help="Dump transaction list for position with worker id")
     parser.add_argument("-t", "--test", action="store_true", help="Print out first line of file with field mapping")
+    parser.add_argument("--stop-on-validation", action="store_true", help="Dump validation messages to screen and exit")
     parser.add_argument("-i", "--input_file", action="append", default=["./combined.csv",],
                         help="Input file - multiple files may be specified")
     mgroup = parser.add_mutually_exclusive_group()
-    mgroup.add_argument("-w", "--worker", help="Output only transactions required for specified worker (employee id)",
+    mgroup.add_argument("-p", "--position", help="Output only transactions with specified position (position id)",
+                        action="append", required=False)
+    mgroup.add_argument("-w", "--worker", help="Output only transactions with specified worker (employee id)",
                         action="append", required=False)
     mgroup.add_argument("-s", "--sequence", help="Output only workers w max sequence > value", type=int)
     return parser.parse_args()
@@ -111,6 +140,10 @@ if __name__ == "__main__":
         l.setLevel(logging.DEBUG)
     info("Starting program.")
 
+    # Set global logging values
+    if not args.stop_on_validation:
+        stop_on_validation = True
+
     # Print out index positions
     if args.indexes:
         d = dict((name, eval(name)) for name in ["EMP_ID_INDEX", "POSITION_ID_INDEX",
@@ -124,6 +157,26 @@ if __name__ == "__main__":
     if args.print_header:
         print(Transaction.header())
         sys.exit(0)
+
+    # Check for debugging sequence issues
+    if args.errored_records_file:
+        # Arg 1 should be trans type, arg 2 should be file name, check to see if valid
+        type_str = args.errored_records_file[0]
+        try:
+            _get_type(type_str)
+        except:
+            error("Invalid type passed to errored-records-file option of {}".format(
+                    type_str))
+            error("Valid values are:")
+            for t in Trans_Type.all_types():
+                print("\t{}".format(t))
+            raise
+        file = args.errored_recoreds_file[1]
+        if not os.path.isfile(file):
+            error("File {} does not exist.".format(file))
+            raise Exception
+
+
 
     trans_list = []
     ctr = 0
@@ -213,23 +266,47 @@ if __name__ == "__main__":
             from_position for transactions
             to_position/from for LOA and TERM transactions
     """
-    info("Validating data")
+    if args.dump_worker:
+        for w in args.dump_worker:
+            w = worker_dict[w]
+            print("Dumping transactions for worker {}".format(w))
+            for t in w.get_transactions():
+                print("\t{}".format(t))
+    if args.dump_position:
+        for p in args.dump_position:
+            p = position_dict[p]
+            print("Dumping transactions for position {}".format(p))
+            for t in p.get_transactions():
+                print("\t{}".format(t))
+
+
+    info("Validating worker data")
     for w in worker_dict.values():
         w.validate()
 
-    # Now go through each transaction and get pre-reqs
+    info("Validating position data")
+    for p in position_dict.values():
+        p.validate()
+
+    """
+        We now have a full set of data. Any logical checks have been performed, added data
+        (e.g. from_position) has been added as applicable.
+        Below this point we now use the data to generate the requested output
+    """
+
+    # Go through each transaction and get pre-reqs
     info("Calculating dependencies")
-    if args.worker is None:
+    if args.worker is None and args.position is None:
         for w in worker_dict.values():
             t = w.top_of_stack()
             if t is None:
                 continue
             t.return_pre_reqs()
-    else: # Only calc for worker(s) (and related workers as needed)
+    elif args.worker: # Only calc for worker(s) (and related workers as needed)
         for emp_id in args.worker:
             if emp_id not in worker_dict:
-                print("Worker with employee id = {} does not exist.".format(args.worker))
-                sys.exit(1)
+                print("Worker with employee id = {} does not exist.".format(emp_id))
+                raise Exception
             t = worker_dict[emp_id].top_of_stack()
             sub_list = t.return_pre_reqs()
             # Now we get all the workers in the list and print out all their transactions
@@ -239,6 +316,19 @@ if __name__ == "__main__":
             trans_list = []
             for w in worker_set:
                 trans_list += w.get_transactions()
+    elif args.position:  # Only calc for position(s)
+        for pos_id in args.position:
+            if pos_id not in position_dict:
+                print("Position {} does not exist in input file".format(pos_id))
+                sys.exit(1)
+            t = position_dict[pos_id].top_of_stack()
+            sub_list = t.return_pre_reqs()
+            position_set = set()
+            for p in sub_list:
+                position_set.add(t.position)
+            trans_list = []
+            for p in position_set:
+                trans_list += p.get_transactions()
 
     info("Generating output")
     # Let's find some complicated worker transactions if requested

@@ -7,12 +7,13 @@ from staffing_model import Staffing_Models
 import logging
 
 # Configure logging for everyone
-logging.basicConfig()
+logging.basicConfig(datefmt="%H:%M:%S", format="%(asctime)s %(message)s")
 l = logging.getLogger()
 l.setLevel(logging.CRITICAL)
 debug = l.debug
 info = l.info
 error = l.error
+stop_on_validation = False
 
 
 # NOTE: Key to the below is the sequence. This should match the
