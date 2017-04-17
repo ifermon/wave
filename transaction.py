@@ -1,5 +1,4 @@
 from __init__ import *
-from sets import Set
 
 log_emp_ids = ["xx27059"]
 
@@ -93,20 +92,6 @@ class Transaction(object):
             raise e
         return output
 
-    def validate_sequencing(self):
-        if self._pre_reqs_calcd:
-            for t in self._pre_reqs:
-                if t.seq > self._seq:
-                    print("Invalid sequencing")
-                    print("Trans: ")
-                    print("\t{}".format(self))
-                    print("Conflict:")
-                    print("\t{}".format(t))
-        else:
-            error("Trying to validate sequencing prior to validation")
-            raise Exception
-        return
-
     @staticmethod
     def _uniquify(my_list):
         """ 
@@ -145,6 +130,15 @@ class Transaction(object):
             self._pre_reqs.sort()
         self._pre_reqs_calcd = True
         return self._pre_reqs
+
+    def set_final_term_seq(self):
+        """ Used to set the sequence when we want final terms in a final file """
+        # Made this less generic so it would not be used incorrectly as the
+        # sequence logic is very complicated
+        if self._ttype is TERM:
+            self._seq = Transaction._max_seq
+        return
+
 
     def get_seq(self):
         """ Return seq, perform needed functions """
@@ -199,21 +193,23 @@ class Transaction(object):
         self.__seq_calcd = True
         return self._seq
 
-
     def invalidate(self, msg):
         """ 
             This transaction somehow is not valid 
             Tell the worker and positions to remove it
         """
         self._valid = False
-        if self._to_position is not None:
-            self._to_position.remove_transaction(self)
-        if self._from_position is not None:
-            self._from_position.remove_transaction(self)
-        if self._worker is not None:
-            self._worker.remove_transaction(self)
+        if self._to_position: self._to_position.remove_transaction(self)
+        else: self._to_position = DUMMY
+
+        if self._from_position: self._from_position.remove_transaction(self)
+        else: self._from_position = DUMMY
+
+        if self._worker: self._worker.remove_transaction(self)
+
         self._ttype.add_to_invalid_list(self)
         Transaction.add_to_invalid_list(self, msg)
+        self._seq = -1
         return
 
     @property
