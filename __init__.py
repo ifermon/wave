@@ -28,6 +28,7 @@ TERM = Trans_Type("Term", 6, ["Term", "z-Term"])
 PRE_HIRE = Position("Pre-Hire", Staffing_Models.JOB_MGMT)
 JOB_MGMT_POS = Position("Job Management Position", Staffing_Models.JOB_MGMT)
 TERMED_EMP = Position("Terminated", Staffing_Models.JOB_MGMT)
+DUMMY = Position("Dummy", Staffing_Models.JOB_MGMT)
 
 JOB_MGMT = Staffing_Models.JOB_MGMT
 POSITION_MGMT = Staffing_Models.POSITION_MGMT
