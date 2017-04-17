@@ -18,6 +18,20 @@ class Position(object):
         self._sorted = False
         return
 
+    def dump(self):
+        """ Return formatted string with all position data """
+        ret_str = "Position id {}\n".format(self._pos_id)
+        ret_str += "\tStaffing Model = {}\tSorted = {}\t".format(
+                self._staffing, self._sorted)
+        ret_str += "\tValid Transaction List:\n"
+        for t in self._tlist:
+            ret_str += "\t\t{}\t".format(t)
+        ret_str += "\tInvalid Transaction List:\n"
+        for t in self._invalid_list:
+            ret_str += "\t\t{}\t".format(t)
+        ret_str += "\n"
+        return ret_str
+
     def _sort(self):
         if not self._sorted and self._tlist:
             self._tlist.sort()

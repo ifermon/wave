@@ -14,7 +14,7 @@ class Trans_Type(object):
     @classmethod
     def all_types(cls):
         """ Returns an iterable of all defined types """
-        return list(cls._types_list)
+        return sorted(cls._types_list)
 
     @classmethod
     def get_type(cls, type_str):
@@ -95,6 +95,8 @@ class Trans_Type(object):
         return self.seq >= other.seq
 
     def __str__(self):
+        return self.ttype
+    def __repr__(self):
         return self.ttype
 
     @property

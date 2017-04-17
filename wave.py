@@ -70,6 +70,7 @@ import time
 import datetime as dt
 import os.path
 import argparse
+from collections import OrderedDict
 from worker import Worker
 from transaction import Transaction
 from __init__ import *
@@ -116,10 +117,10 @@ def parse_command_line():
     parser.add_argument("-d", "--debug", action="store_true")
     parser.add_argument("--dump-worker", action="append", help="Dump transaction list for worker with worker id")
     parser.add_argument("--dump-position", action="append", help="Dump transaction list for position with worker id")
+    parser.add_argument("--dump-transaction", action="append", help="Dump transaction list for transaction with lineno")
     parser.add_argument("-t", "--test", action="store_true", help="Print out first line of file with field mapping")
     parser.add_argument("--stop-on-validation", action="store_true", help="Dump validation messages to screen and exit")
-    parser.add_argument("-i", "--input_file", action="append", default=["./combined.csv",],
-                        help="Input file - multiple files may be specified")
+    parser.add_argument("-i", "--input_file", action="append", help="Input file - multiple files may be specified")
     mgroup = parser.add_mutually_exclusive_group()
     mgroup.add_argument("-p", "--position", help="Output only transactions with specified position (position id)",
                         action="append", required=False)
@@ -180,6 +181,7 @@ if __name__ == "__main__":
 
     trans_list = []
     ctr = 0
+    transaction_dict = {}
     for fname in args.input_file:
         info("Opening {}".format(fname))
         with open(fname,"rU") as csvfile:
@@ -199,6 +201,7 @@ if __name__ == "__main__":
                 t = Transaction(d, ttype, row[EMP_ID_INDEX], row[POSITION_ID_INDEX], ctr)
                 trans_list.append(t)
                 ttype.add_transaction(t)
+                transaction_dict[str(ctr)] = t
 
                 if args.test:
                     print(row)
@@ -207,12 +210,12 @@ if __name__ == "__main__":
         info("Finished reading {}".format(fname))
 
     if args.stats:
+        print("Total transaction count: {}".format(len(trans_list)))
         for tt in Trans_Type.all_types():
             print("Type: {}".format(tt.ttype))
             print("\tTotal Transaction Count: {}".format(tt.total_count))
             print("\tGood Transaction Count: {}".format(tt.good_count))
             print("\tBad Transaction Count: {}".format(tt.bad_count))
-        sys.exit(0)
 
     # Create my various lists / dicts
     worker_dict = {}
@@ -266,20 +269,6 @@ if __name__ == "__main__":
             from_position for transactions
             to_position/from for LOA and TERM transactions
     """
-    if args.dump_worker:
-        for w in args.dump_worker:
-            w = worker_dict[w]
-            print("Dumping transactions for worker {}".format(w))
-            for t in w.get_transactions():
-                print("\t{}".format(t))
-    if args.dump_position:
-        for p in args.dump_position:
-            p = position_dict[p]
-            print("Dumping transactions for position {}".format(p))
-            for t in p.get_transactions():
-                print("\t{}".format(t))
-
-
     info("Validating worker data")
     for w in worker_dict.values():
         w.validate()
@@ -287,6 +276,7 @@ if __name__ == "__main__":
     info("Validating position data")
     for p in position_dict.values():
         p.validate()
+
 
     """
         We now have a full set of data. Any logical checks have been performed, added data
@@ -298,10 +288,16 @@ if __name__ == "__main__":
     info("Calculating dependencies")
     if args.worker is None and args.position is None:
         for w in worker_dict.values():
+            if not w.valid:
+                continue
             t = w.top_of_stack()
             if t is None:
                 continue
             t.return_pre_reqs()
+        for w in worker_dict.values():
+            t = w.top_of_stack()
+            if t:
+                t.validate_sequencing()
     elif args.worker: # Only calc for worker(s) (and related workers as needed)
         for emp_id in args.worker:
             if emp_id not in worker_dict:
@@ -329,6 +325,64 @@ if __name__ == "__main__":
             trans_list = []
             for p in position_set:
                 trans_list += p.get_transactions()
+
+    info("Max sequence is {}".format(Transaction._max_seq))
+
+    """ 
+        Dump specific workers or positions for use in debugging
+        if specified on command line
+    """
+    if args.debug:
+        print("Dumping max sequence transaction\n{}".format(Transaction._max_seq_t))
+        print(Transaction._max_seq_t.dump())
+    if args.dump_worker:
+        for w in args.dump_worker:
+            if w not in worker_dict:
+                print("Employee id {} not found in data file".format(w))
+            else:
+                print(worker_dict[w].dump())
+    if args.dump_position:
+        for p in args.dump_position:
+            if p not in position_dict:
+                print("Position id {} not found in data file".format(p))
+            else:
+                print(position_dict[p].dump())
+    if args.dump_transaction:
+        for t in args.dump_transaction:
+            if t not in transaction_dict:
+                print("Transaction lineno {} not found in data file".format(t))
+            else:
+                print(transaction_dict[t].dump())
+
+    info("Calculating statistics")
+    master_list = []
+    for i in range(Transaction._max_seq + 1):
+        master_list.append(OrderedDict([(key, []) for key in Trans_Type.all_types()]))
+    for t in trans_list:
+        if not t.valid:
+            continue
+        i = t.seq
+        tt = t.ttype
+        master_list[i][tt].append(t)
+    if args.stats:
+        file_ctr = 0
+        file_stats = OrderedDict.fromkeys(Trans_Type.all_types(), 0)
+        for i in range(Transaction._max_seq + 1):
+            print("Wave {}".format(i))
+            for k, v in master_list[i].iteritems():
+                if v:
+                    file_ctr += 1
+                    file_stats[k] += 1
+                    print("\t{} has {} transactions.".format(k, len(v)))
+        print("A total of {} files will have to be loaded".format(file_ctr))
+        for tt, ct in file_stats.iteritems():
+            print("\t{} file(s) of type {}".format(ct, tt))
+    for t in master_list[0][HIRE]:
+        if t.worker.flag:
+            print("Duplicate worker in wave 0: {}".format(w))
+        t.worker.flag = True
+    #print(master_list[1][HIRE][:5])
+
 
     info("Generating output")
     # Let's find some complicated worker transactions if requested

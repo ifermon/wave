@@ -26,7 +26,7 @@ LOA_STOP = Trans_Type("LOA Stop", 5, "LOA_RETURN")
 TERM = Trans_Type("Term", 6, ["Term", "z-Term"])
 
 PRE_HIRE = Position("Pre-Hire", Staffing_Models.JOB_MGMT)
-JOB_MGMT_POS = Position("Pre-Hire Job Management Position", Staffing_Models.JOB_MGMT)
+JOB_MGMT_POS = Position("Job Management Position", Staffing_Models.JOB_MGMT)
 TERMED_EMP = Position("Terminated", Staffing_Models.JOB_MGMT)
 
 JOB_MGMT = Staffing_Models.JOB_MGMT

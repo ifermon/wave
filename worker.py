@@ -7,7 +7,7 @@ from __init__ import *
 from enum import Enum
 
 # Log employees allows you to log information about a list of emp ids for debugging
-log_employees = ["xx27059"]
+log_employees = ["x62883"]
 
 class Status(Enum):
     ON_LEAVE = 1
@@ -28,7 +28,24 @@ class Worker(object):
         self._invalid_list = []
         self._sorted = False
         self._validated = False
+        self._valid = True
+        self.flag = False
         return
+
+    def dump(self):
+        """ Return a formatted string that contains all the info for this worker """
+        ret_str = "Worker id {}\n".format(self._emp_id)
+        ret_str += "\tValid = {}\tValidated = {}\tSorted = {}\tFlag = {}\n".format(
+                self._valid, self._validated, self._sorted, self.flag)
+        ret_str += "\tValid Transaction List:\n"
+        for t in self._tlist:
+            ret_str += "\t\t{}\n".format(t)
+        ret_str += "\tInvalid Transaction List\n"
+        for t in self._invalid_list:
+            ret_str += "\t\t{}\n".format(t)
+        ret_str += "\n"
+        return ret_str
+
 
     def top_of_stack(self):
         """ 
@@ -38,7 +55,9 @@ class Worker(object):
         if self._tlist:
             self._sort()
             ret = self._tlist[-1]
-        else: ret = None
+        else:
+            error("Worker with no valid transactions {}".format(self))
+            ret = None
         return ret
 
     def ret_pre_reqs(self, trans):
@@ -96,15 +115,17 @@ class Worker(object):
             for t in self._tlist:
                 print(t)
             print("\n")
+
+        if self._tlist[0].ttype != HIRE:
+            error("Invalid worker. First transaction is not hire")
+            error("Worker {}".format(self))
+            self._valid = False
+
         for t in self._tlist: # You should be going in date / type order
 
             if t.emp_id in log_employees:
-                print("Enter: {} Worker status: {}".format(t, 
+                print("Enter: {}\n Worker status: {}".format(t,
                         worker_status))
-                #print("""\tEntering with last to: [{}] last type:"""
-                #        """[{}] worker status [{}]""".format(
-                #        last_to_position, last_type, worker_status))
-                #print("\tt.to_position: {}".format(t.to_position))
 
             if t.ttype == HIRE:
                 # Check to see if HIRE is valid sequentially
@@ -143,12 +164,15 @@ class Worker(object):
 
             elif t.ttype == LOA_START:
                 # should have position unless job mgmt
-                if worker_status == INACTIVE:
+                if worker_status != ACTIVE:
                     t.invalidate("Start of LOA but worker is not active")
                 else:
-                    if t.to_position is None:
-                        t.to_position = JOB_MGMT_POS
-                    if t.from_position is None:
+                    if not t.to_position:
+                        if last_to_position:
+                            t.to_position = last_to_position
+                        else:
+                            t.to_position = JOB_MGMT_POS
+                    if not t.from_position:
                         t.from_position = last_to_position
                     last_to_position = t.to_position
                     last_type = t.ttype
@@ -160,19 +184,22 @@ class Worker(object):
                 else:
                     worker_status = ACTIVE
                     # should have position unless job mgmt
-                    if t.to_position is None:
-                        t.to_position = JOB_MGMT_POS
-                    if t.from_position is None:
+                    if not t.to_position:
+                        if last_to_position:
+                            t.to_position = last_to_position
+                        else:
+                            t.to_position = JOB_MGMT_POS
+                    if not t.from_position:
                         t.from_position = last_to_position
                     last_to_position = t.to_position
                     last_type = t.ttype
 
             if t.emp_id in log_employees:
-                #print("\tt.to_position: {}".format(t.to_position))
-                #print("""\tExiting with last to: [{}] last type:"""
-                #        """[{}] worker status {}""".format(
-                #        last_to_position, last_type, worker_status))
-                print("Exit : {} {}\n".format(t, worker_status))
+                print("Exit : {}\n {}\n".format(t, worker_status))
+
+            if not self._tlist:
+                self._valid = False
+
         return # END _validate
 
     def remove_transaction(self, trans):
@@ -186,6 +213,7 @@ class Worker(object):
     def _sort(self):
         if not self._sorted and len(self._tlist) != 0:
                 self._tlist.sort()
+                self._tlist[-1].top_of_stack = True
         self._sorted = True
         return
 
@@ -196,6 +224,9 @@ class Worker(object):
     @property
     def emp_id(self):
         return self._emp_id
+    @property
+    def valid(self):
+        return self._valid
 
     @property
     def max_seq(self):
@@ -212,7 +243,7 @@ class Worker(object):
             ret_str = "Emp id {}\nTransactions:\n\t{}".format(
                 self._emp_id, tstr)
         else:
-            ret_str = "Emp id {}".format(self._emp_id)
+            ret_str = "Emp id {} {}".format(self._emp_id, self._valid)
 
         return ret_str
 
