@@ -117,11 +117,11 @@ class Worker(object):
             print("\n")
 
         if self._tlist[0].ttype != HIRE:
-            error("Invalid worker. First transaction is not hire")
-            error("Worker {}".format(self))
             self._valid = False
             for t in self._tlist:
                 t.invalidate("All transactions for this worker are invalid due to impossible first staffing action")
+            info("Invalid worker. First transaction is not hire")
+            info(self.dump())
 
         if self._valid:
             for t in self._tlist: # You should be going in date / type order
