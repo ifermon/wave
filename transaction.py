@@ -15,7 +15,7 @@ class Transaction(object):
 
     """
 
-    _max_seq = 0
+    _max_seq = -1
     _max_seq_t = None
     # Class method to track the longest sequence
     @classmethod
@@ -49,11 +49,12 @@ class Transaction(object):
         self._from_position = None
         self._valid = True
         self._pre_reqs = []
+        self.__pos_pre_reqs = []
+        self.__worker_pre_reqs = []
         self._pre_reqs_calcd = False
-        self._seq_change_notification_list = Set()
+        self.__seq_calcd = False
         self._seq = 0
         self._top_of_stack = False
-        self.__sequence_calc_in_progress = False
         if ttype == HIRE:
             self._from_position = PRE_HIRE
         if ttype == TERM:
@@ -74,9 +75,6 @@ class Transaction(object):
         ret_str += "\tFrom Position:\n\t\t{}\n".format(self._from_position)
         ret_str += "\tPre-reqs:\n"
         for t in self._pre_reqs:
-            ret_str += "\t\t{}\n".format(t)
-        ret_str += "\tSequence Change Notification List:\n"
-        for t in self._seq_change_notification_list:
             ret_str += "\t\t{}\n".format(t)
         ret_str += "\n"
         return ret_str
@@ -120,100 +118,87 @@ class Transaction(object):
             keys[i] = 1
         return keys.keys()
 
-    def notify_seq_change(self):
-        """ Process notification that one of our pre-req transactions have changed their sequence """
-        if not self._pre_reqs_calcd:
-            self.return_pre_reqs()
-        else:
-            self._calc_seq()
-
     def return_pre_reqs(self):
         """
             Build list of transactions that must be completed before this one.
             Go through each transaction for to_position
             And then for worker
+            If you think of the dependencies as a graph, with a transaction as a node,
+            each node can only have two edges to the next transaction. One is the worker edge,
+            the other is the position edge
         """
         if not self._valid:
             return []
-        if not self._pre_reqs_calcd:
-            # If my to_position is JOB_MGMT then we don't
-            # have any dependencies on transactions from
-            # position being a dependency
-            if self._to_position.staffing_model != JOB_MGMT:
-                for t in self._to_position.get_transactions():
-                    if not t.valid:
-                        continue
-                    if t < self:
-                        self._pre_reqs += t.return_pre_reqs() + [t, ]
-            for t in self._worker.get_transactions():
-                if not t.valid:
-                    continue
-                if t < self:
-                    self._pre_reqs += t.return_pre_reqs() + [t, ]
-                else:
-                    # Worker transactions are guaranteed to be sorted
-                    # So once a transaction is > t, all will be
-                    break
-            self._pre_reqs = Transaction._uniquify(self._pre_reqs)
-            if self._pre_reqs:  # Sorting empty list returns None
-                self._pre_reqs.sort()
-            if self._top_of_stack:
-                self._calc_seq()
-            self._pre_reqs_calcd = True
-        ret_list = self._pre_reqs
-        if self._top_of_stack:
-            for t in self._pre_reqs:
-                t.sub_seq_change(self)
-        return ret_list
 
-    def sub_seq_change(self, sub):
-        """ Register other transactions to notify if you change seq """
-        if sub is not self:
-            self._seq_change_notification_list.add(sub)
-        return
+        if not self._pre_reqs_calcd:
+            # Get the position based pre-reqs (pt)
+            if self._to_position.staffing_model != JOB_MGMT:
+                pt = self._to_position.get_prior_transaction(self)
+                if pt:
+                    self.__pos_pre_reqs += pt.return_pre_reqs() + [pt, ]
+            # Get the worker based pre-reqs (wt)
+            wt = self._worker.get_prior_transaction(self)
+            if wt:
+                self.__worker_pre_reqs += wt.return_pre_reqs() + [wt, ]
+            self._pre_reqs = self.__pos_pre_reqs + self.__worker_pre_reqs
+            self._pre_reqs = Transaction._uniquify(self._pre_reqs)
+            self._pre_reqs.sort()
+        self._pre_reqs_calcd = True
+        return self._pre_reqs
+
+    def get_seq(self):
+        """ Return seq, perform needed functions """
+        if not self._pre_reqs_calcd:
+            error("Called get_seq with no pre-reqs calcd")
+            self.return_pre_reqs()
+        if self.__seq_calcd:
+            ret = self._seq
+        else:
+            ret = self._calc_seq()
+        return ret
+
+    def __derive_seq(self, t):
+        """ Given a transaction, return the next seq value which will always 
+            be equal or +1
+        """
+        t_seq = t.get_seq()
+        if t.ttype > self.ttype:
+            # LOA start and stop are a special case
+            if t.ttype not in [LOA_START, LOA_STOP] or self.ttype not in [LOA_START, LOA_STOP]:
+                t_seq += 1
+        elif t.ttype == self.ttype:
+            # Trans types that can't have more than one row per file
+            # Job change can't have more than one because we expect a matching
+            # assign org
+            if self.ttype in [HIRE, TERM, CHANGE_JOB]:
+                t_seq += 1
+        return t_seq
 
     def _calc_seq(self):
         """
             For each transaction in _pre_reqs list, assign a sequence
+            For each edge, look at the last seq and calc accordingly
         """
-        if not self.__sequence_calc_in_progress:
-            seq = 0
-            self.__sequence_calc_in_progress = True
-            last_type = None
-            last_trans = None
-            for t in self._pre_reqs + [self]:  # list sorted by date/type
-                # It's fine to have 2 in a row or more of change job, org ass or loa
-                # Break out logic for each type to be clear
-                if t.ttype is CHANGE_JOB and last_type is not CHANGE_JOB:
-                    seq += 1
-                elif t.ttype is ORG_ASSN and last_type is not ORG_ASSN:
-                    seq += 1
-                elif t.ttype is LOA_START and last_type is not LOA_STOP:
-                    seq += 1
-                elif t.ttype is LOA_STOP and last_type is not LOA_START:
-                    # This should never happen, but increment sequence
-                    seq += 1
-                elif t.ttype is HIRE:
-                    # Assuming that we always start with hire- no actions before hire
-                    #  If last_type isn't none we always increment sequence
-                    if last_type and (last_type is not HIRE or last_trans.worker is t.worker):
-                        seq += 1
-                elif t.ttype is TERM:
-                    seq += 1
-                seq = t.assign_seq(seq)
-                last_type = t.ttype
-                last_trans = t
-            self.__sequence_calc_in_progress = False
-        return
-
-    def assign_seq(self, i):
-        """ Assign a sequence. """
-        if self._seq < i:
-            self._seq = i
-            Transaction.max_seq(i, self)
-            for t in self._seq_change_notification_list:
-                t.notify_seq_change()
+        if not self._pre_reqs_calcd:
+            self.return_pre_reqs()
+        if not self.__worker_pre_reqs:
+            w_seq = 0
+        else:
+            # get the seq of the previous trans on the worker edge
+            # get_seq causes seq to be calculated (vs. just property seq)
+            w_t =  self.__worker_pre_reqs[-1]
+            w_seq = self.__derive_seq(w_t)
+        if not self.__pos_pre_reqs:
+            p_seq = 0
+        else:
+            # get seq of previous trans on position edge
+            p_t = self.__pos_pre_reqs[-1]
+            p_seq = self.__derive_seq(p_t)
+        self._seq = max(w_seq, p_seq)
+        Transaction.max_seq(self._seq, self)
+        self.__seq_calcd = True
         return self._seq
+
 
     def invalidate(self, msg):
         """ 

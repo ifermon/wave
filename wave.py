@@ -83,6 +83,16 @@ POSITION_ID_INDEX = 2
 EFFECTIVE_DATE_INDEX = 1
 TRANS_TYPE_INDEX = 4
 
+def pager(page_size, iterable):
+    """ Helper function to easily page through iterables """
+    page = []
+    for i in iterable:
+        page.append(i)
+        if len(page) == page_size:
+            yield page
+            page = []
+    yield page
+
 def _get_type(type_str):
     """ Map values in file for transaction type to supported transactions """
     ret = Trans_Type.get_type(type_str)
@@ -118,6 +128,7 @@ def parse_command_line():
     parser.add_argument("--dump-worker", action="append", help="Dump transaction list for worker with worker id")
     parser.add_argument("--dump-position", action="append", help="Dump transaction list for position with worker id")
     parser.add_argument("--dump-transaction", action="append", help="Dump transaction list for transaction with lineno")
+    parser.add_argument("--page-size", type=int, default=5000, help="Number of transactions to process prior to printing out status message")
     parser.add_argument("-t", "--test", action="store_true", help="Print out first line of file with field mapping")
     parser.add_argument("--stop-on-validation", action="store_true", help="Dump validation messages to screen and exit")
     parser.add_argument("-i", "--input_file", action="append", help="Input file - multiple files may be specified")
@@ -287,17 +298,30 @@ if __name__ == "__main__":
     # Go through each transaction and get pre-reqs
     info("Calculating dependencies")
     if args.worker is None and args.position is None:
-        for w in worker_dict.values():
-            if not w.valid:
-                continue
-            t = w.top_of_stack()
-            if t is None:
-                continue
-            t.return_pre_reqs()
+        for p in pager(args.page_size, worker_dict.values()):
+            for w in p:
+                    if not w.valid:
+                        continue
+                    t = w.top_of_stack()
+                    if not t:
+                        continue
+                    t.return_pre_reqs()
+            info("Processed pre-reqs for {} workers.".format(len(p)))
+        for p in pager(args.page_size, worker_dict.values()):
+            for w in p:
+                if not w.valid:
+                    continue
+                t = w.top_of_stack()
+                if not t:
+                    continue
+                t.get_seq()
+            info("Processed sequences for {} workers".format(len(p)))
+        """
         for w in worker_dict.values():
             t = w.top_of_stack()
             if t:
                 t.validate_sequencing()
+        """
     elif args.worker: # Only calc for worker(s) (and related workers as needed)
         for emp_id in args.worker:
             if emp_id not in worker_dict:

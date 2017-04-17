@@ -71,6 +71,23 @@ class Position(object):
                     w = t.worker
         return
 
+    def get_prior_transaction(self, t):
+        """ Given a transaction t, return the item immediately preceding it from trans list 
+            If item not in trans list, return None
+            If it is the first item in the list, return None
+        """
+        if not self._sorted:
+            self._sort()
+        if t not in self._tlist:
+            ret = None
+        else:
+            i = self._tlist.index(t)
+            if i is 0:
+                ret = None
+            else:
+                ret = self._tlist[i-1]
+        return ret
+
     def add_transaction(self, trans):
         """ Add a transaction to the list of transactions that involve this position """
         self._tlist.append(trans)

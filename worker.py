@@ -120,85 +120,88 @@ class Worker(object):
             error("Invalid worker. First transaction is not hire")
             error("Worker {}".format(self))
             self._valid = False
+            for t in self._tlist:
+                t.invalidate("All transactions for this worker are invalid due to impossible first staffing action")
 
-        for t in self._tlist: # You should be going in date / type order
+        if self._valid:
+            for t in self._tlist: # You should be going in date / type order
 
-            if t.emp_id in log_employees:
-                print("Enter: {}\n Worker status: {}".format(t,
-                        worker_status))
+                if t.emp_id in log_employees:
+                    print("Enter: {}\n Worker status: {}".format(t,
+                            worker_status))
 
-            if t.ttype == HIRE:
-                # Check to see if HIRE is valid sequentially
-                if last_type != TERM and last_to_position is None:
-                    print("For emp {}, HIRE trx out of order".format(
-                            self._emp_id))
-                    print("Last type = {} last to position = {}".format(
-                            last_type, last_to_position))
-                    print("Current trx \n\t{}".format(t))
-                    print(self)
-                    raise Exception
-                # This should have a to, and from is PRE_HIRE
-                worker_status = ACTIVE
-                if t.to_position is None: # Only happens w/ job mgmt orgs
-                    t.to_position = JOB_MGMT_POS
-                if t.from_position is None:
-                    t.from_position = PRE_HIRE
-                last_to_position = t.to_position
-                last_type = t.ttype
-
-            elif t.ttype == TERM:
-                # Term has no positions, use last position
-                t.to_position = TERMED_EMP
-                t.from_position = last_to_position
-                last_to_position = TERMED_EMP
-                worker_status = INACTIVE
-
-            elif t.ttype in [ORG_ASSN, CHANGE_JOB]:
-                # Should have a to position unless job mgmt
-                if t.to_position is None: # Assume job mgmt
-                    t.to_position = JOB_MGMT_POS
-                if t.from_position is None:
-                    t.from_position = last_to_position
-                last_to_position = t.to_position
-                last_type = t.ttype
-
-            elif t.ttype == LOA_START:
-                # should have position unless job mgmt
-                if worker_status != ACTIVE:
-                    t.invalidate("Start of LOA but worker is not active")
-                else:
-                    if not t.to_position:
-                        if last_to_position:
-                            t.to_position = last_to_position
-                        else:
-                            t.to_position = JOB_MGMT_POS
-                    if not t.from_position:
-                        t.from_position = last_to_position
-                    last_to_position = t.to_position
-                    last_type = t.ttype
-                    worker_status = ON_LEAVE
-
-            elif t.ttype == LOA_STOP:
-                if worker_status != ON_LEAVE:
-                    t.invalidate("End of LOA but worker was not on LOA")
-                else:
+                if t.ttype == HIRE:
+                    # Check to see if HIRE is valid sequentially
+                    if last_type != TERM and last_to_position is None:
+                        print("For emp {}, HIRE trx out of order".format(
+                                self._emp_id))
+                        print("Last type = {} last to position = {}".format(
+                                last_type, last_to_position))
+                        print("Current trx \n\t{}".format(t))
+                        print(self)
+                        raise Exception
+                    # This should have a to, and from is PRE_HIRE
                     worker_status = ACTIVE
-                    # should have position unless job mgmt
-                    if not t.to_position:
-                        if last_to_position:
-                            t.to_position = last_to_position
-                        else:
-                            t.to_position = JOB_MGMT_POS
-                    if not t.from_position:
-                        t.from_position = last_to_position
+                    if t.to_position is None: # Only happens w/ job mgmt orgs
+                        t.to_position = JOB_MGMT_POS
+                    if t.from_position is None:
+                        t.from_position = PRE_HIRE
                     last_to_position = t.to_position
                     last_type = t.ttype
 
-            if t.emp_id in log_employees:
-                print("Exit : {}\n {}\n".format(t, worker_status))
+                elif t.ttype == TERM:
+                    # Term has no positions, use last position
+                    t.to_position = TERMED_EMP
+                    t.from_position = last_to_position
+                    last_to_position = TERMED_EMP
+                    worker_status = INACTIVE
 
-            if not self._tlist:
-                self._valid = False
+                elif t.ttype in [ORG_ASSN, CHANGE_JOB]:
+                   # Should have a to position unless job mgmt
+                   if t.to_position is None: # Assume job mgmt
+                        t.to_position = JOB_MGMT_POS
+                   if t.from_position is None:
+                        t.from_position = last_to_position
+                        last_to_position = t.to_position
+                        last_type = t.ttype
+
+                elif t.ttype == LOA_START:
+                    # should have position unless job mgmt
+                    if worker_status != ACTIVE:
+                        t.invalidate("Start of LOA but worker is not active")
+                    else:
+                        if not t.to_position:
+                            if last_to_position:
+                                t.to_position = last_to_position
+                            else:
+                                t.to_position = JOB_MGMT_POS
+                        if not t.from_position:
+                            t.from_position = last_to_position
+                        last_to_position = t.to_position
+                        last_type = t.ttype
+                        worker_status = ON_LEAVE
+
+                elif t.ttype == LOA_STOP:
+                    if worker_status != ON_LEAVE:
+                        t.invalidate("End of LOA but worker was not on LOA")
+                    else:
+                        worker_status = ACTIVE
+                        # should have position unless job mgmt
+                        if not t.to_position:
+                            if last_to_position:
+                                t.to_position = last_to_position
+                            else:
+                                t.to_position = JOB_MGMT_POS
+                        if not t.from_position:
+                            t.from_position = last_to_position
+                        last_to_position = t.to_position
+                        last_type = t.ttype
+
+                if t.emp_id in log_employees:
+                    print("Exit : {}\n {}\n".format(t, worker_status))
+
+                if not self._tlist:
+                    self._valid = False
 
         return # END _validate
 
@@ -216,6 +219,23 @@ class Worker(object):
                 self._tlist[-1].top_of_stack = True
         self._sorted = True
         return
+
+    def get_prior_transaction(self, t):
+        """ Given a transaction t, return the item immediately preceding it from trans list 
+            If item not in trans list, return None
+            If it is the first item in the list, return empty list
+        """
+        if not self._sorted:
+            self._sort()
+        if t not in self._tlist:
+            ret = None
+        else:
+            i = self._tlist.index(t)
+            if i is 0:
+                ret = None
+            else:
+                ret = self._tlist[i - 1]
+        return ret
 
     def get_transactions(self):
         self._sort()
