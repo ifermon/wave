@@ -56,13 +56,11 @@
     TODO: Add ability to intake an id for each line to allow reference
         between generated files and source data, id + Type must be unique
     TODO: Add ability to generate files by wave, type, or both
-    TODO: Add a nice, indented output for all worker transactions for a given worker
     TODO: Add ability to include row headers in command line (which position)
-    TODO: Fix print headers option
-    TODO: Add a verbose option to print out progress
     TODO: Add ability to take in staffing model (job mgmt)
     TODO: Add errored-record-file option
-    TODO: Validate positions are free when worker changes
+    TODO: Clean up logging / messaging between debug and verbose
+    TODO: Add guide to adding transaction types (what methods you need to look at
 """
 import csv
 import sys
@@ -128,7 +126,10 @@ def parse_command_line():
     parser.add_argument("--dump-worker", action="append", help="Dump transaction list for worker with worker id")
     parser.add_argument("--dump-position", action="append", help="Dump transaction list for position with worker id")
     parser.add_argument("--dump-transaction", action="append", help="Dump transaction list for transaction with lineno")
-    parser.add_argument("--page-size", type=int, default=5000, help="Number of transactions to process prior to printing out status message")
+    parser.add_argument("--final-term-file", action="store_true",
+                        help="Hold \"final\" terms for the last term file")
+    parser.add_argument("--page-size", type=int, default=5000,
+                        help="Number of transactions to process prior to printing out status message")
     parser.add_argument("-t", "--test", action="store_true", help="Print out first line of file with field mapping")
     parser.add_argument("--stop-on-validation", action="store_true", help="Dump validation messages to screen and exit")
     parser.add_argument("-i", "--input_file", action="append", help="Input file - multiple files may be specified")
@@ -297,7 +298,7 @@ if __name__ == "__main__":
 
     # Go through each transaction and get pre-reqs
     info("Calculating dependencies")
-    if args.worker is None and args.position is None:
+    if not args.worker and not args.position:
         for p in pager(args.page_size, worker_dict.values()):
             for w in p:
                     if not w.valid:
@@ -316,12 +317,14 @@ if __name__ == "__main__":
                     continue
                 t.get_seq()
             info("Processed sequences for {} workers".format(len(p)))
-        """
-        for w in worker_dict.values():
-            t = w.top_of_stack()
-            if t:
-                t.validate_sequencing()
-        """
+        if args.final_term_file:
+            # Push all top of stack terms to final wave
+            seq = Transaction._max_seq
+            for w in worker_dict.values():
+                if not w.valid:
+                    continue
+                if w.top_of_stack().ttype is TERM:
+                    w.top_of_stack().set_final_term_seq()
     elif args.worker: # Only calc for worker(s) (and related workers as needed)
         for emp_id in args.worker:
             if emp_id not in worker_dict:
@@ -421,16 +424,15 @@ if __name__ == "__main__":
 
     # Generate output files
     if args.file_by_type:
-        timestamp = time.time()
+        timestamp = time.strftime("%Y-%m-%d_%H%M%S")
         for tt in Trans_Type.all_types():
-            fname = "{}.{}.csv".format(tt.ttype, timestamp)
+            fname = "{}.{}.csv".format(str(tt.ttype).replace(" ", "_"), timestamp)
             with open(fname, "w") as f:
                 for t in tt.get_ordered_transactions():
                     f.write(t.output() + "\n")
     else:
         with open(args.output_file, "w") as f:
             for t in trans_list:
-                if t.valid:
-                    f.write(t.output() + "\n")
+                f.write(t.output() + "\n")
     info("Done")
 
