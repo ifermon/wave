@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python -B
 """
     This is the controller for the module.
     Built using Python 2.7.3, but should work with 3.x
@@ -76,9 +76,10 @@ from __init__ import *
 # Specify the indexed location for each field in input files:
 # Ex: EMP_123, 3/4/2010, HIRE, POS_1, 12345
 # EMP_123 is index 0, effective date is index 1, etc
-EMP_ID_INDEX = 0
-POSITION_ID_INDEX = 2
-EFFECTIVE_DATE_INDEX = 1
+RECORD_ID = 0
+EMP_ID_INDEX = 1
+EFFECTIVE_DATE_INDEX = 2
+POSITION_ID_INDEX = 3
 TRANS_TYPE_INDEX = 4
 
 def pager(page_size, iterable):
@@ -101,38 +102,40 @@ def _get_type(type_str):
 
 def parse_command_line():
     """ Process command line arguments """
-    parser = argparse.ArgumentParser(description=("This module takes a list of transactions"
-                                                  " as input files and generates the sequencing for loading those "
-                                                  "transactions into Workday. \n"
-                                                  "Files need to be in the following excel csv format:"
-                                                  "employee id, event date, position id, <unused>, transaction type"))
-    parser.add_argument("--print-header", action="store_true", help="Print out header column names", required=False)
-    parser.add_argument("--ignore-rows", help="Ignore first n rows of input file")
-    parser.add_argument("--indexes", action="store_true", help="Print out column indexes for csv files")
+    parser = argparse.ArgumentParser(
+        description=("This module takes a list of transactions" 
+                     " as input files and generates the sequencing for loading those " 
+                     "transactions into Workday. \n" 
+                     "Files need to be in the following csv format:" 
+                     "employee id, event date, position id, <unused>, transaction type"))
+    parser.add_argument("input_file", metavar="Input File", nargs="+",
+                        help="Input file - multiple files may be specified")
+    parser.add_argument("-i", "--ignore-rows", type=int, help="Ignore first n rows of input file")
+    parser.add_argument("-o", "--output_file", default="./output.csv")
+    parser.add_argument("--final-term-file", action="store_true",
+                        help="Hold \"final\" terms for the last term file")
+    parser.add_argument("--file-by-type", action="store_true",
+                        help=("Generate output files by transaction type."
+                              " Designed to be inserted directly into excel "
+                              "master file. Output is orded by record id if available, "
+                              "otherwise order by load order. Output files are put in "
+                              "current directory, and named <type>.<timestamp>.csv."))
     parser.add_argument("--errored-records-file", nargs=2, help=("Transaction type string and file name. File "
                                                                  "contains list of errored records. Generates "
                                                                  "output file containing on transactions related to "
                                                                  "those records"))
-    parser.add_argument("-o", "--output_file", default="./output.csv")
-    parser.add_argument("--file-by-type", action="store_true",
-                        help=("Generate output files by transaction type." 
-                              " Designed to be inserted directly into excel " 
-                              "master file. Output is orded by record id if available, " 
-                              "otherwise order by load order. Output files are put in " 
-                              "current directory, and named <type>.<timestamp>.csv."))
-    parser.add_argument("-v", "--verbose", action="store_true")
-    parser.add_argument("--stats", action="store_true", help="Return statistics about transaction numbers and types")
-    parser.add_argument("-d", "--debug", action="store_true")
-    parser.add_argument("--dump-worker", action="append", help="Dump transaction list for worker with worker id")
-    parser.add_argument("--dump-position", action="append", help="Dump transaction list for position with worker id")
-    parser.add_argument("--dump-transaction", action="append", help="Dump transaction list for transaction with lineno")
-    parser.add_argument("--final-term-file", action="store_true",
-                        help="Hold \"final\" terms for the last term file")
+    parser.add_argument("--stop-on-validation", action="store_true", help="Dump validation messages to screen and exit")
     parser.add_argument("--page-size", type=int, default=5000,
                         help="Number of transactions to process prior to printing out status message")
     parser.add_argument("-t", "--test", action="store_true", help="Print out first line of file with field mapping")
-    parser.add_argument("--stop-on-validation", action="store_true", help="Dump validation messages to screen and exit")
-    parser.add_argument("-i", "--input_file", action="append", help="Input file - multiple files may be specified")
+    parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("-d", "--debug", action="store_true")
+    parser.add_argument("--stats", action="store_true", help="Return statistics about transaction numbers and types")
+    parser.add_argument("--indexes", action="store_true", help="Print out column indexes for csv files")
+    parser.add_argument("--print-header", action="store_true", help="Print out header column names", required=False)
+    parser.add_argument("--dump-worker", action="append", help="Dump transaction list for worker with worker id")
+    parser.add_argument("--dump-position", action="append", help="Dump transaction list for position with worker id")
+    parser.add_argument("--dump-transaction", action="append", help="Dump transaction list for transaction with lineno")
     mgroup = parser.add_mutually_exclusive_group()
     mgroup.add_argument("-p", "--position", help="Output only transactions with specified position (position id)",
                         action="append", required=False)
@@ -191,6 +194,7 @@ if __name__ == "__main__":
 
 
 
+    """ Start processing files """
     trans_list = []
     ctr = 0
     transaction_dict = {}
@@ -205,20 +209,26 @@ if __name__ == "__main__":
                     reader.next()
 
             for row in reader:
-                ctr += 1
+                try:
+                    ctr += 1
 
-                d = dt.datetime.strptime(row[EFFECTIVE_DATE_INDEX], "%m/%d/%Y").date()
-                ttype = _get_type(row[TRANS_TYPE_INDEX])
+                    d = dt.datetime.strptime(row[EFFECTIVE_DATE_INDEX], "%m/%d/%Y").date()
+                    ttype = _get_type(row[TRANS_TYPE_INDEX])
 
-                t = Transaction(d, ttype, row[EMP_ID_INDEX], row[POSITION_ID_INDEX], ctr)
-                trans_list.append(t)
-                ttype.add_transaction(t)
-                transaction_dict[str(ctr)] = t
+                    t = Transaction(d, ttype, row[EMP_ID_INDEX], row[POSITION_ID_INDEX], ctr, row[RECORD_ID])
+                    trans_list.append(t)
+                    ttype.add_transaction(t)
+                    transaction_dict[str(ctr)] = t
 
-                if args.test:
-                    print(row)
-                    print(t.test_str())
-                    sys.exit(0)
+                    if args.test:
+                        print(row)
+                        print(t.test_str())
+                        sys.exit(0)
+                except:
+                    error("Exception reading row")
+                    error(row)
+                    error("From file {}".format(fname))
+                    raise
         info("Finished reading {}".format(fname))
 
     if args.stats:
@@ -428,10 +438,12 @@ if __name__ == "__main__":
         for tt in Trans_Type.all_types():
             fname = "{}.{}.csv".format(str(tt.ttype).replace(" ", "_"), timestamp)
             with open(fname, "w") as f:
+                f.write(Transaction.header() + "\n")
                 for t in tt.get_ordered_transactions():
                     f.write(t.output() + "\n")
     else:
         with open(args.output_file, "w") as f:
+            f.write(Transaction.header() + "\n")
             for t in trans_list:
                 f.write(t.output() + "\n")
     info("Done")

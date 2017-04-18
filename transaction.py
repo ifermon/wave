@@ -36,6 +36,11 @@ class Transaction(object):
     def get_invalid_transactions(cls):
         return cls._invalid_list
 
+    @classmethod
+    def header(cls):
+        return "Record #, Emp ID, Seq, Date, Type, To Pos, From Pos, Line no, Valid Flag"
+
+
     def __init__(self, date, ttype, emp, position_id, lineno, rec_number=None):
         self._date = date
         self._ttype = ttype
@@ -81,11 +86,11 @@ class Transaction(object):
     def output(self):
         """ Generates output string for comma delimited output files """
         try:
-            output = "{},{},{},{},{},{},{},{},{}".format(
-                    self._emp_id, self._date, self._ttype,
-                    self._position_id, self._to_position.pos_id, 
+            output = "{},{},{},{},{},{},{},{},{},{}".format(
+                    self._rec_number, self._emp_id, self._seq, self._date,
+                    self._ttype, self._position_id, self._to_position.pos_id,
                     self._from_position.pos_id, self._lineno, 
-                    self._valid, self._seq)
+                    self._valid)
         except Exception as e: 
             print("Error outputting transaction")
             print(self)
@@ -320,10 +325,6 @@ class Transaction(object):
                 ret = self.ttype >= other.ttype
         else: ret =  self.date >= other.date
         return ret
-
-    @staticmethod
-    def header():
-        return "Date, Employee ID, To Position, Transaction Type, Line Number, Valid?, Sequence"
 
     def test_str(self):
         return "Employee id: {}\nPosition id: {}\nTransaction Type: {}\nDate: {}\n".format(

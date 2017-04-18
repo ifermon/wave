@@ -21,8 +21,8 @@ stop_on_validation = False
 HIRE = Trans_Type("Hire", 1, ["Hire", "a-Hire"])
 CHANGE_JOB = Trans_Type("Job Change", 2, ["Job Change", "d-Job Change", "d-Hjob Change"])
 ORG_ASSN = Trans_Type("Assign Org", 3, ["g-Org Assignment", "Assign Org"])
-LOA_START = Trans_Type("LOA Start", 4, "LOA-START")
-LOA_STOP = Trans_Type("LOA Stop", 5, "LOA_RETURN")
+LOA_START = Trans_Type("LOA Start", 4, ["LOA-START", "LOA Start"])
+LOA_STOP = Trans_Type("LOA Stop", 5, ["LOA_RETURN", "LOA Stop"])
 TERM = Trans_Type("Term", 6, ["Term", "z-Term"])
 
 PRE_HIRE = Position("Pre-Hire", Staffing_Models.JOB_MGMT)

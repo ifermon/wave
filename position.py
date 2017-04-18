@@ -21,14 +21,14 @@ class Position(object):
     def dump(self):
         """ Return formatted string with all position data """
         ret_str = "Position id {}\n".format(self._pos_id)
-        ret_str += "\tStaffing Model = {}\tSorted = {}\t".format(
+        ret_str += "\tStaffing Model = {}\tSorted = {}\t\n".format(
                 self._staffing, self._sorted)
         ret_str += "\tValid Transaction List:\n"
         for t in self._tlist:
-            ret_str += "\t\t{}\t".format(t)
+            ret_str += "\t\t{}\t\n".format(t)
         ret_str += "\tInvalid Transaction List:\n"
         for t in self._invalid_list:
-            ret_str += "\t\t{}\t".format(t)
+            ret_str += "\t\t{}\t\n".format(t)
         ret_str += "\n"
         return ret_str
 
@@ -58,14 +58,8 @@ class Position(object):
                     # We have a change in worker, check to see that prior worker moved
                     p = w.pos_as_of(t.date)
                     if p is self:
-                        print("Problem Transaction:\n\t{}".format(t))
-                        print("Worker Transactions:")
-                        for wt in w.get_transactions():
-                            print("\t{}".format(wt))
-                        print("Position Transactions:")
-                        for pt in p.get_transactions():
-                            print("\t{}".format(pt))
-                        print("\n\n")
+                        __init__.info("Problem Transaction:\n\t{}".format(t))
+                        __init__.info(self.dump())
                     if __init__.stop_on_validation:
                             raise Exception
                     w = t.worker
