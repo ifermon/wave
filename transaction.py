@@ -269,10 +269,10 @@ class Transaction(object):
     @property
     def rec_sort_id(self):
         """ Return record # if exists, otherwise lineno"""
-        if self._rec_number is not None:
-            ret = self._rec_number
+        if self._rec_number:
+            ret = int(self._rec_number)
         else:
-            ret = self._lineno
+            ret = int(self._lineno)
         return ret
     @property
     def top_of_stack(self):

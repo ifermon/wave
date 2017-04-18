@@ -198,6 +198,7 @@ if __name__ == "__main__":
     trans_list = []
     ctr = 0
     transaction_dict = {}
+    file_row_cnt = 0
     for fname in args.input_file:
         info("Opening {}".format(fname))
         with open(fname,"rU") as csvfile:
@@ -229,7 +230,8 @@ if __name__ == "__main__":
                     error(row)
                     error("From file {}".format(fname))
                     raise
-        info("Finished reading {}".format(fname))
+            file_row_cnt = ctr - file_row_cnt
+        info("Finished reading {} lines from {}".format(file_row_cnt, fname))
 
     if args.stats:
         print("Total transaction count: {}".format(len(trans_list)))
@@ -414,11 +416,13 @@ if __name__ == "__main__":
         print("A total of {} files will have to be loaded".format(file_ctr))
         for tt, ct in file_stats.iteritems():
             print("\t{} file(s) of type {}".format(ct, tt))
+    """
     for t in master_list[0][HIRE]:
         if t.worker.flag:
             print("Duplicate worker in wave 0: {}".format(w))
         t.worker.flag = True
-    #print(master_list[1][HIRE][:5])
+    print(master_list[1][HIRE][:5])
+    """
 
 
     info("Generating output")
