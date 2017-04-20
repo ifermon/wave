@@ -53,9 +53,6 @@
      workers and positions and gets all the required transactions based on that data
      - it should include all dependent records.
 
-    TODO: Add ability to intake an id for each line to allow reference
-        between generated files and source data, id + Type must be unique
-    TODO: Add ability to generate files by wave, type, or both
     TODO: Add ability to include row headers in command line (which position)
     TODO: Add ability to take in staffing model (job mgmt)
     TODO: Add errored-record-file option
