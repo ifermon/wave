@@ -46,7 +46,6 @@ class Worker(object):
         ret_str += "\n"
         return ret_str
 
-
     def top_of_stack(self):
         """ 
             If the is a transaction list, return the last (greatest date
@@ -87,7 +86,6 @@ class Worker(object):
                     ret = last_t.to_position
                     break
         return ret
-
 
     def validate(self):
         try:
@@ -158,9 +156,17 @@ class Worker(object):
 
                 elif t.ttype in [ORG_ASSN, CHANGE_JOB]:
                    # Should have a to position unless job mgmt
-                   if t.to_position is None: # Assume job mgmt
+                   if not t.to_position: # Assume job mgmt
                         t.to_position = JOB_MGMT_POS
-                   if t.from_position is None:
+                   if not t.from_position:
+                        t.from_position = last_to_position
+                        last_to_position = t.to_position
+                        last_type = t.ttype
+
+                elif t.ttype in [EFFECTIVE_DATED_COMP, REQ_COMP_CHANGE]:
+                    if not t.to_position:
+                        t.to_position = JOB_MGMT_POS
+                    if not t.from_position:
                         t.from_position = last_to_position
                         last_to_position = t.to_position
                         last_type = t.ttype
@@ -247,6 +253,9 @@ class Worker(object):
     @property
     def valid(self):
         return self._valid
+    @property
+    def invalid(self):
+        return not self._valid
 
     @property
     def max_seq(self):

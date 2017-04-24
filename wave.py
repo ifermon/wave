@@ -144,6 +144,8 @@ def parse_command_line():
 
 if __name__ == "__main__":
 
+    start = time.time()
+
     args = parse_command_line()
 
     # Set logging
@@ -289,6 +291,7 @@ if __name__ == "__main__":
         Go through each worker and fill in missing data:
             from_position for transactions
             to_position/from for LOA and TERM transactions
+            Also, perform basic validations on both positions and workers
     """
     info("Validating worker data")
     for w in worker_dict.values():
@@ -371,13 +374,25 @@ if __name__ == "__main__":
     if args.debug:
         print("Dumping max sequence transaction\n{}".format(Transaction._max_seq_t))
         print(Transaction._max_seq_t.dump())
+        print("Dumping bad workers")
+        for w in worker_dict.values():
+            if w.invalid:
+                print(w.dump())
+        print("Done printing invalid workers")
+        print("Dumping bad transactions")
+        for t, m in Transaction.get_invalid_list_msg():
+            print("Reason: {}".format(m))
+            print("\t{}".format(t.dump()))
+        print("Done printing invalid transactions")
     if args.dump_worker:
+        print("Dumping worker(s)")
         for w in args.dump_worker:
             if w not in worker_dict:
                 print("Employee id {} not found in data file".format(w))
             else:
                 print(worker_dict[w].dump())
     if args.dump_position:
+        print("Dumping position(s)")
         for p in args.dump_position:
             if p not in position_dict:
                 print("Position id {} not found in data file".format(p))
@@ -447,5 +462,6 @@ if __name__ == "__main__":
             f.write(Transaction.header() + "\n")
             for t in trans_list:
                 f.write(t.output() + "\n")
-    info("Done")
+    stop = time.time()
+    info("Done. Running time was {:0.0f} seconds".format(stop - start))
 

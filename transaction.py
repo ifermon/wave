@@ -33,6 +33,10 @@ class Transaction(object):
         return
 
     @classmethod
+    def get_invalid_list_msg(cls):
+        return cls._invalid_list.items()
+
+    @classmethod
     def get_invalid_transactions(cls):
         return cls._invalid_list
 
@@ -52,6 +56,7 @@ class Transaction(object):
         self._worker = None
         self._from_position = None
         self._valid = True
+        self._invalid_msg = "Valid Transaction"
         self._pre_reqs = []
         self.__pos_pre_reqs = []
         self.__worker_pre_reqs = []
@@ -214,6 +219,7 @@ class Transaction(object):
 
         self._ttype.add_to_invalid_list(self)
         Transaction.add_to_invalid_list(self, msg)
+        self._invalid_msg = msg
         self._seq = -1
         return
 
