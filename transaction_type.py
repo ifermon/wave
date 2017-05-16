@@ -5,10 +5,16 @@ class Trans_Type(object):
         to allow for relative sequencing of different iloads based on load order
     """
     _types_list = []
+    _seq_list = []
 
     @classmethod
     def _add_type(cls, ttype):
         cls._types_list.append(ttype)
+        if ttype.seq in cls._seq_list:
+            print("Trying to add duplicate sequenced for type {}".format(ttype))
+            raise
+        else:
+            cls._seq_list.append(ttype.seq)
         return
 
     @classmethod

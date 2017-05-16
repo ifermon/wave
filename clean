@@ -1,0 +1,7 @@
+names=$(ls [A-Z]*.csv)
+echo "Removing $names (y/N):"
+read a
+if [[ "$a" == "y" ]]
+then
+    rm [A-Z]*.csv
+fi

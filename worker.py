@@ -21,6 +21,12 @@ ON_LEAVE = Status.ON_LEAVE
 class Worker(object):
     # Set to true if you want the worker to log all it's transactions
     _log_trans = False
+    _anonymize = False
+
+    @classmethod
+    def anonymize(cls):
+        cls._anonymize = True
+        return
 
     def __init__(self, emp_id):
         self._emp_id = emp_id
@@ -30,6 +36,7 @@ class Worker(object):
         self._validated = False
         self._valid = True
         self.flag = False
+        self._key = "W{:06d}".format(worker_seq.next())
         return
 
     def dump(self):
@@ -249,7 +256,11 @@ class Worker(object):
 
     @property
     def emp_id(self):
-        return self._emp_id
+        if Worker._anonymize:
+            ret = self._key
+        else:
+            ret = self._emp_id
+        return ret
     @property
     def valid(self):
         return self._valid

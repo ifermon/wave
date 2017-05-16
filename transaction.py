@@ -42,7 +42,7 @@ class Transaction(object):
 
     @classmethod
     def header(cls):
-        return "Record #, Emp ID, Seq, Date, Type, To Pos, From Pos, Line no, Valid Flag"
+        return "Record #, Emp ID, Seq, Date, Type, To Pos, To Pos Staffing, From Pos, From Pos Staffing, Line no, Valid Flag"
 
 
     def __init__(self, date, ttype, emp, position_id, lineno, rec_number=None):
@@ -91,12 +91,19 @@ class Transaction(object):
     def output(self):
         """ Generates output string for comma delimited output files """
         try:
+            """
             output = "{},{},{},{},{},{},{},{},{},{}".format(
                     self._rec_number, self._emp_id, self._seq, self._date,
                     self._ttype, self._position_id, self._to_position.pos_id,
                     self._from_position.pos_id, self._lineno, 
                     self._valid)
-        except Exception as e: 
+            """
+            output = "{},{},{},{},{},{},{},{},{},{},{}".format(
+                self._rec_number, self._worker.emp_id, self._seq, self._date,
+                self._ttype, self._to_position.pos_id, self._to_position.staffing_model,
+                self._from_position.pos_id, self._from_position.staffing_model, self._lineno,
+                self._valid)
+        except Exception as e:
             print("Error outputting transaction")
             print(self)
             raise e

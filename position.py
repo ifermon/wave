@@ -9,6 +9,12 @@ class Position(object):
 
     # Set this to true if you want it to log transactions
     _log_trans = False
+    _anonymize = False
+
+    @classmethod
+    def anonymize(cls):
+        cls._anonymize = True
+        return
 
     def __init__(self, pos_id, staffing=Staffing_Models.POSITION_MGMT):
         self._pos_id = pos_id
@@ -16,6 +22,7 @@ class Position(object):
         self._tlist = []
         self._invalid_list = []
         self._sorted = False
+        self._key = "P{:06d}".format(__init__.position_seq.next())
         return
 
     def dump(self):
@@ -108,7 +115,11 @@ class Position(object):
     @property
     def pos_id(self):
         """ Returns the ID of this position """
-        return self._pos_id
+        if Position._anonymize:
+            ret = self._key
+        else:
+            ret = self._pos_id
+        return ret
 
 
     def __repr__(self):

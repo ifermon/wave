@@ -129,6 +129,7 @@ def parse_command_line():
     parser.add_argument("-d", "--debug", action="store_true")
     parser.add_argument("--stats", action="store_true", help="Return statistics about transaction numbers and types")
     parser.add_argument("--indexes", action="store_true", help="Print out column indexes for csv files")
+    parser.add_argument("--anonymize", action="store_true", help="Generate output files using mapped values for emp id and pos id")
     parser.add_argument("--print-header", action="store_true", help="Print out header column names", required=False)
     parser.add_argument("--dump-worker", action="append", help="Dump transaction list for worker with worker id")
     parser.add_argument("--dump-position", action="append", help="Dump transaction list for position with worker id")
@@ -191,7 +192,9 @@ if __name__ == "__main__":
             error("File {} does not exist.".format(file))
             raise Exception
 
-
+    if args.anonymize:
+        Worker.anonymize()
+        Position.anonymize()
 
     """ Start processing files """
     trans_list = []
@@ -231,14 +234,6 @@ if __name__ == "__main__":
                     raise
             file_row_cnt = ctr - file_row_cnt
         info("Finished reading {} lines from {}".format(file_row_cnt, fname))
-
-    if args.stats:
-        print("Total transaction count: {}".format(len(trans_list)))
-        for tt in Trans_Type.all_types():
-            print("Type: {}".format(tt.ttype))
-            print("\tTotal Transaction Count: {}".format(tt.total_count))
-            print("\tGood Transaction Count: {}".format(tt.good_count))
-            print("\tBad Transaction Count: {}".format(tt.bad_count))
 
     # Create my various lists / dicts
     worker_dict = {}
@@ -416,6 +411,15 @@ if __name__ == "__main__":
         tt = t.ttype
         master_list[i][tt].append(t)
     if args.stats:
+        print("Total transaction count: {}".format(len(trans_list)))
+        print("Transaction type summary:")
+        for tt in Trans_Type.all_types():
+            print("Type: {}".format(tt.ttype))
+            print("\tTotal Transaction Count: {}".format(tt.total_count))
+            print("\tGood  Transaction Count: {}".format(tt.good_count))
+            print("\tBad   Transaction Count: {}".format(tt.bad_count))
+
+        print("Wave summary:")
         file_ctr = 0
         file_stats = OrderedDict.fromkeys(Trans_Type.all_types(), 0)
         for i in range(Transaction._max_seq + 1):
@@ -427,15 +431,7 @@ if __name__ == "__main__":
                     print("\t{} has {} transactions.".format(k, len(v)))
         print("A total of {} files will have to be loaded".format(file_ctr))
         for tt, ct in file_stats.iteritems():
-            print("\t{} file(s) of type {}".format(ct, tt))
-    """
-    for t in master_list[0][HIRE]:
-        if t.worker.flag:
-            print("Duplicate worker in wave 0: {}".format(w))
-        t.worker.flag = True
-    print(master_list[1][HIRE][:5])
-    """
-
+            print("\t{:3} file(s) of type {}".format(ct, tt))
 
     info("Generating output")
     # Let's find some complicated worker transactions if requested
@@ -453,11 +449,13 @@ if __name__ == "__main__":
         timestamp = time.strftime("%Y-%m-%d_%H%M%S")
         for tt in Trans_Type.all_types():
             fname = "{}.{}.csv".format(str(tt.ttype).replace(" ", "_"), timestamp)
+            info("Writing file {}".format(fname))
             with open(fname, "w") as f:
                 f.write(Transaction.header() + "\n")
                 for t in tt.get_ordered_transactions():
                     f.write(t.output() + "\n")
     else:
+        info("Writing file {}".format(args.output_file))
         with open(args.output_file, "w") as f:
             f.write(Transaction.header() + "\n")
             for t in trans_list:
