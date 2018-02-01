@@ -10,7 +10,7 @@ import logging
 # Configure logging for everyone
 logging.basicConfig(datefmt="%H:%M:%S", format="%(asctime)s %(message)s")
 l = logging.getLogger()
-l.setLevel(logging.CRITICAL)
+l.setLevel(logging.DEBUG)
 debug = l.debug
 info = l.info
 error = l.error

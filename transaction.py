@@ -246,6 +246,7 @@ class Transaction(object):
             print(self)
             raise Exception
         self._from_position = position_obj
+        position_obj.add_transaction(self)
         return
     @property
     def to_position(self):
@@ -302,14 +303,20 @@ class Transaction(object):
     def __lt__(self, other):
         if self.date == other.date:
             if self.ttype == other.ttype:
-                ret = self.lineno < other.lineno
+                if self.from_position == other.to_position:
+                    ret = True
+                else:
+                    ret = False
             else: ret = self.ttype < other.ttype
         else: ret =  self.date < other.date
         return ret
     def __gt__(self, other):
         if self.date == other.date:
             if self.ttype == other.ttype:
-                ret = self.lineno > other.lineno
+                if self.from_position == other.to_position:
+                    ret = False
+                else:
+                    ret = True
             else: ret = self.ttype > other.ttype
         else: ret =  self.date > other.date
         return ret
@@ -326,14 +333,20 @@ class Transaction(object):
     def __le__(self, other):
         if self.date == other.date:
             if self.ttype == other.ttype:
-                ret = self.lineno <= other.lineno
+                if self.from_position == other.to_position:
+                    ret = True
+                else:
+                    ret = self.lineno <= other.lineno
             else: ret = self.ttype < other.ttype
         else: ret =  self.date <= other.date
         return ret
     def __ge__(self, other):
         if self.date == other.date:
             if self.ttype == other.ttype:
-                ret = self.lineno >= other.lineno
+                if self.from_position == other.to_position:
+                    ret = False
+                else:
+                    ret = self.lineno >= other.lineno
             else:
                 ret = self.ttype >= other.ttype
         else: ret =  self.date >= other.date

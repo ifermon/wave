@@ -40,6 +40,10 @@ class Position(object):
         return ret_str
 
     def _sort(self):
+        """ 
+            Position is a special snowflake, when we sort we need to care about if we're going into a 
+            position or out of a position. The out-of must happen first
+        """
         if not self._sorted and self._tlist:
             self._tlist.sort()
         self._sorted = True
